@@ -103,7 +103,7 @@
         function castMedia() {
             const mediaUrl = document.getElementById('mediaUrl').value;
             const mediaType = document.getElementById('mediaType').value;
-            const duration = parseInt(document.getElementById('duration').value) || null;
+            const duration = document.getElementById('duration').value;
             const deviceName = document.getElementById('deviceNameMedia').value;
 
             fetch('/cast_media', {
@@ -118,15 +118,15 @@
         }
 
         function shutdownDevices() {
-            fetch('/shutdown_devices', { method: 'POST' })
+            fetch('/shutdown_devices', {method: 'POST'})
                 .then(response => response.json())
                 .then(data => {
-                    alert(data.status === 'success' ? 'Devices shutdown successfully!' : 'Failed to shutdown devices.');
+                    alert(data.status === 'success' ? 'Devices shut down successfully!' : 'Failed to shut down devices.');
                 });
         }
 
         function turnOnDevices() {
-            fetch('/turn_on_devices', { method: 'POST' })
+            fetch('/turn_on_devices', {method: 'POST'})
                 .then(response => response.json())
                 .then(data => {
                     alert(data.status === 'success' ? 'Devices turned on successfully!' : 'Failed to turn on devices.');
@@ -134,7 +134,7 @@
         }
 
         function setVolume() {
-            const volume = prompt("Enter volume level (0-100):");
+            const volume = prompt('Enter volume (0-100):');
             fetch('/set_volume', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -147,7 +147,7 @@
         }
 
         function muteDevices() {
-            fetch('/mute_devices', { method: 'POST' })
+            fetch('/mute_devices', {method: 'POST'})
                 .then(response => response.json())
                 .then(data => {
                     alert(data.status === 'success' ? 'Devices muted successfully!' : 'Failed to mute devices.');
@@ -155,7 +155,7 @@
         }
 
         function unmuteDevices() {
-            fetch('/unmute_devices', { method: 'POST' })
+            fetch('/unmute_devices', {method: 'POST'})
                 .then(response => response.json())
                 .then(data => {
                     alert(data.status === 'success' ? 'Devices unmuted successfully!' : 'Failed to unmute devices.');
