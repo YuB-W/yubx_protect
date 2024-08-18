@@ -37,7 +37,7 @@ file_path = "alerts_history.json"
 delay_seconds = 5  # Delay in seconds between each fetch and send operation
 
 
-with open('/home/kali/Desktop/Python/website.html', 'r') as file:
+with open('/home/kali/Desktop/Python/yubx_protect/website.html', 'r') as file:
     MAP_HTML = file.read()
 
 @app.route('/clear_logs', methods=['POST'])
@@ -391,7 +391,7 @@ def get_alerts():
 
 @app.route('/')
 def serve_map():
-    return send_from_directory('', 'index.html')
+    return render_template_string('', 'indexx.html')
 
     
 def main():
