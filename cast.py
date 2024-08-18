@@ -3,7 +3,8 @@ import pychromecast
 import logging
 import json
 import os
-import time  # Import time module for sleep
+import time
+import socket
 
 # Configure logging
 logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,9 +26,15 @@ def save_config(config):
 
 app = Flask(__name__)
 
-# Read HTML content from file
-with open('/home/kali/Desktop/Python/yubx_protect/index.html', 'r') as file:
-    HTML_CONTENT = file.read()
+def load_html_content():
+    """Load HTML content from a file."""
+    html_file_path = '/home/kali/Desktop/Python/yubx_protect/index.html'
+    if os.path.exists(html_file_path):
+        with open(html_file_path, 'r') as file:
+            return file.read()
+    return "<h1>HTML file not found</h1>"
+
+HTML_CONTENT = load_html_content()
 
 def discover_chromecast_devices(timeout=5):
     """Discover Chromecast devices with a specified timeout."""
@@ -38,6 +45,19 @@ def discover_chromecast_devices(timeout=5):
     except Exception as e:
         logging.error(f"An error occurred while discovering devices: {e}")
         return []
+
+def get_ip_address(interface):
+    """Get the IP address of a specified network interface."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(('8.8.8.8', 80))  # Connect to an external address
+        ip_address = s.getsockname()[0]
+        s.close()
+        return ip_address
+    except Exception as e:
+        logging.error(f"Unable to get IP address for interface {interface}: {e}")
+        return "0.0.0.0"
 
 @app.route('/')
 def index():
@@ -182,4 +202,6 @@ def unmute():
     return jsonify({'status': 'success'}), 200
 
 if __name__ == '__main__':
+    ip_address = get_ip_address('eth0')
+    print(f"\nWebsite: http://{ip_address}:5001\n")
     app.run(debug=True, host='0.0.0.0', port=5001)
