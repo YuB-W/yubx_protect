@@ -9,8 +9,25 @@
             font-family: Arial, sans-serif;
             background-color: #111;
             color: #0f0;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #222;
+            padding: 10px;
+            text-align: center;
+            color: #0f0;
+        }
+
+        main {
             padding: 20px;
         }
+
+        section {
+            margin-bottom: 20px;
+        }
+
         button {
             background-color: #c00;
             color: #fff;
@@ -19,9 +36,11 @@
             cursor: pointer;
             margin: 5px;
         }
+
         button:hover {
             background-color: #f00;
         }
+
         input, select {
             padding: 5px;
             margin: 5px;
@@ -29,12 +48,11 @@
             color: #0f0;
             border: 1px solid #0f0;
         }
-        h1 {
+
+        h1, h2 {
             color: #0f0;
         }
-        h2 {
-            color: #f00;
-        }
+
         pre {
             background-color: #333;
             padding: 10px;
@@ -43,45 +61,49 @@
     </style>
 </head>
 <body>
-    <h1>YuB-X Cyber Command Center</h1>
-    <div>
-        <h2>Available Devices</h2>
-        <button onclick="discoverDevices()">Discover Devices</button>
-        <pre id="deviceList"></pre>
-    </div>
-    <div>
-        <h2>Cast Text</h2>
-        <input type="text" id="textMessage" placeholder="Text message">
-        <input type="text" id="deviceNameText" placeholder="Device name">
-        <label>
-            <input type="checkbox" id="animationCheckbox"> Animation
-        </label>
-        <button onclick="castText()">Cast Text</button>
-    </div>
-    <div>
-        <h2>Cast Media</h2>
-        <input type="text" id="mediaUrl" placeholder="Enter Media URL">
-        <input type="text" id="mediaType" placeholder="Enter Media Type">
-        <input type="number" id="duration" placeholder="Enter Duration (seconds)">
-        <input type="text" id="deviceNameMedia" placeholder="Device name">
-        <button onclick="castMedia()">Cast Media</button>
-    </div>
-    <div>
-        <h2>Device Control</h2>
-        <button onclick="shutdownDevices()">Shutdown Devices</button>
-        <button onclick="turnOnDevices()">Turn On</button>
-        <button onclick="setVolume()">Set Volume</button>
-        <button onclick="muteDevices()">Mute</button>
-        <button onclick="unmuteDevices()">Unmute</button>
-    </div>
-
+    <header>
+        <h1>YuB-X Cyber Command Center</h1>
+    </header>
+    <main>
+        <section>
+            <h2>Available Devices</h2>
+            <button onclick="discoverDevices()">Discover Devices</button>
+            <pre id="deviceList"></pre>
+        </section>
+        <section>
+            <h2>Cast Text</h2>
+            <input type="text" id="textMessage" placeholder="Text message">
+            <input type="text" id="deviceNameText" placeholder="Device name">
+            <label>
+                <input type="checkbox" id="animationCheckbox"> Animation
+            </label>
+            <button onclick="castText()">Cast Text</button>
+        </section>
+        <section>
+            <h2>Cast Media</h2>
+            <input type="text" id="mediaUrl" placeholder="Enter Media URL">
+            <input type="text" id="mediaType" placeholder="Enter Media Type">
+            <input type="number" id="duration" placeholder="Enter Duration (seconds)">
+            <input type="text" id="deviceNameMedia" placeholder="Device name">
+            <button onclick="castMedia()">Cast Media</button>
+        </section>
+        <section>
+            <h2>Device Control</h2>
+            <button onclick="shutdownDevices()">Shutdown Devices</button>
+            <button onclick="turnOnDevices()">Turn On</button>
+            <button onclick="setVolume()">Set Volume</button>
+            <button onclick="muteDevices()">Mute</button>
+            <button onclick="unmuteDevices()">Unmute</button>
+        </section>
+    </main>
     <script>
         function discoverDevices() {
             fetch('/discover_devices')
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('deviceList').textContent = JSON.stringify(data, null, 2);
-                });
+                })
+                .catch(error => console.error('Error discovering devices:', error));
         }
 
         function castText() {
@@ -97,7 +119,8 @@
             .then(response => response.json())
             .then(data => {
                 alert(data.status === 'success' ? 'Text message cast successfully!' : 'Failed to cast text message.');
-            });
+            })
+            .catch(error => console.error('Error casting text:', error));
         }
 
         function castMedia() {
@@ -114,7 +137,8 @@
             .then(response => response.json())
             .then(data => {
                 alert(data.status === 'success' ? 'Media cast successfully!' : 'Failed to cast media.');
-            });
+            })
+            .catch(error => console.error('Error casting media:', error));
         }
 
         function shutdownDevices() {
@@ -122,7 +146,8 @@
                 .then(response => response.json())
                 .then(data => {
                     alert(data.status === 'success' ? 'Devices shut down successfully!' : 'Failed to shut down devices.');
-                });
+                })
+                .catch(error => console.error('Error shutting down devices:', error));
         }
 
         function turnOnDevices() {
@@ -130,7 +155,8 @@
                 .then(response => response.json())
                 .then(data => {
                     alert(data.status === 'success' ? 'Devices turned on successfully!' : 'Failed to turn on devices.');
-                });
+                })
+                .catch(error => console.error('Error turning on devices:', error));
         }
 
         function setVolume() {
@@ -143,7 +169,8 @@
             .then(response => response.json())
             .then(data => {
                 alert(data.status === 'success' ? 'Volume set successfully!' : 'Failed to set volume.');
-            });
+            })
+            .catch(error => console.error('Error setting volume:', error));
         }
 
         function muteDevices() {
@@ -151,7 +178,8 @@
                 .then(response => response.json())
                 .then(data => {
                     alert(data.status === 'success' ? 'Devices muted successfully!' : 'Failed to mute devices.');
-                });
+                })
+                .catch(error => console.error('Error muting devices:', error));
         }
 
         function unmuteDevices() {
@@ -159,7 +187,8 @@
                 .then(response => response.json())
                 .then(data => {
                     alert(data.status === 'success' ? 'Devices unmuted successfully!' : 'Failed to unmute devices.');
-                });
+                })
+                .catch(error => console.error('Error unmuting devices:', error));
         }
     </script>
 </body>
