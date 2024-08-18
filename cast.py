@@ -190,5 +190,5 @@ def shutdown_all_devices():
 
 if __name__ == '__main__':
     ip_address = socket.gethostbyname(socket.gethostname())
-    print(f"Website: http://{ip_address}:5001\n")
+    print(f"V1 Website: http://{ip_address}:5001\n")
     app.run(debug=True, host='0.0.0.0', port=5001)
