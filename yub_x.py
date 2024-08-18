@@ -5,7 +5,6 @@ import time
 import urllib.request
 from urllib.error import HTTPError, URLError
 from colorama import Fore, Style, init
-import logging
 
 # Initialize colorama for colorful terminal output
 init(autoreset=True)
@@ -21,7 +20,7 @@ def print_banner():
           ╚██████╔╝╚██████╔╝██║     
            ╚═════╝  ╚═════╝ ╚═╝     
     ====================================
-               YuB-X Protect V5
+               YuB-X Protect V6
     ====================================
     """
     print(Fore.GREEN + banner)
@@ -56,15 +55,36 @@ def is_package_installed(package):
 
 def install_package(package):
     """Install a Python package using pip with sudo."""
-    if not is_package_installed(package):
+    try:
+        print(Fore.YELLOW + f"[INFO] Installing {package}...")
+        subprocess.check_call(['sudo', 'pip3', 'install', package])
+        print(Fore.GREEN + f"[SUCCESS] Installed {package}.")
+    except subprocess.CalledProcessError:
+        print(Fore.RED + f"[ERROR] Failed to install {package}.")
+
+def uninstall_all_packages():
+    """Uninstall all required Python packages."""
+    required_packages = [
+        'flask', 'scapy', 'playsound', 'requests', 'numpy',
+        'pychromecast', 'logging'
+    ]
+    for package in required_packages:
         try:
-            print(Fore.YELLOW + f"[INFO] Installing {package}...")
-            subprocess.check_call(['sudo', 'pip3', 'install', package])
-            print(Fore.GREEN + f"[SUCCESS] Installed {package}.")
+            print(Fore.YELLOW + f"[INFO] Uninstalling {package}...")
+            subprocess.check_call(['sudo', 'pip3', 'uninstall', '-y', package])
+            print(Fore.GREEN + f"[SUCCESS] Uninstalled {package}.")
         except subprocess.CalledProcessError:
-            print(Fore.RED + f"[ERROR] Failed to install {package}.")
-    else:
-        print(Fore.CYAN + f"[INFO] {package} is already installed.")
+            print(Fore.RED + f"[ERROR] Failed to uninstall {package}.")
+
+def remove_files_and_directories(base_dir):
+    """Remove all files and directories in the base directory."""
+    if os.path.exists(base_dir):
+        try:
+            print(Fore.YELLOW + f"[INFO] Deleting directory: {base_dir}...")
+            subprocess.check_call(['sudo', 'rm', '-r', '-f', base_dir])
+            print(Fore.GREEN + f"[SUCCESS] Removed directory: {base_dir}")
+        except subprocess.CalledProcessError as e:
+            print(Fore.RED + f"[ERROR] Failed to remove directory {base_dir}: {e}")
 
 def install_packages():
     """Install required Python packages."""
@@ -74,6 +94,11 @@ def install_packages():
     ]
     for package in required_packages:
         install_package(package)
+
+def reinstall_packages():
+    """Reinstall required Python packages."""
+    uninstall_all_packages()
+    install_packages()
 
 def open_terminal_windows():
     """Open terminal windows with different commands."""
@@ -116,11 +141,39 @@ def main():
         dest_path = os.path.join(base_dir, filename)
         download_file(url, dest_path)
 
-    print(Fore.MAGENTA + "[INFO] Installing required packages...")
-    install_packages()
+    # User choices for managing packages and directories
+    while True:
+        print(Fore.MAGENTA + """
+        ====================================
+            1. Install packages
+            2. Reinstall packages
+            3. Delete folders (but keep Python packages)
+            4. Exit
+        ====================================
+        """)
+        choice = input("Enter your choice (1-4): ").strip()
 
-    print(Fore.MAGENTA + "[INFO] Opening terminal windows with specified commands...")
-    open_terminal_windows()
+        if choice == '1':
+            print(Fore.MAGENTA + "[INFO] Installing required packages...")
+            install_packages()
+            break
+        elif choice == '2':
+            print(Fore.MAGENTA + "[INFO] Reinstalling required packages...")
+            reinstall_packages()
+            break
+        elif choice == '3':
+            print(Fore.MAGENTA + "[INFO] Deleting folders (but keeping Python packages)...")
+            remove_files_and_directories(base_dir)
+            break
+        elif choice == '4':
+            print(Fore.GREEN + "[INFO] Exiting.")
+            break
+        else:
+            print(Fore.RED + "[ERROR] Invalid choice. Please select a valid option.")
+
+    if choice != '3':
+        print(Fore.MAGENTA + "[INFO] Opening terminal windows with specified commands...")
+        open_terminal_windows()
 
 if __name__ == '__main__':
     main()
