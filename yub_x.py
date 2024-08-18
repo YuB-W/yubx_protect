@@ -109,7 +109,7 @@ def main():
         "index.html": "https://github.com/YuB-W/yubx_protect/raw/main/index.html",
         "detect.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/detect.m4a",
         "welcome.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/welcome.m4a",
-        "alert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/dalert_r.m4a"
+        "alert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/alert_r.m4a"
     }
 
     for filename, url in files.items():
