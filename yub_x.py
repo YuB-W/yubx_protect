@@ -148,7 +148,8 @@ def main():
             1. Install packages
             2. Reinstall packages
             3. Delete folders (but keep Python packages)
-            4. Exit
+            4. start
+            5. Exit
         ====================================
         """)
         choice = input("Enter your choice (1-4): ").strip()
@@ -165,15 +166,15 @@ def main():
             print(Fore.MAGENTA + "[INFO] Deleting folders (but keeping Python packages)...")
             remove_files_and_directories(base_dir)
             break
-        elif choice == '4':
+        elif choice == '5':
             print(Fore.GREEN + "[INFO] Exiting.")
+            break
+        elif choice == '4':
+            print(Fore.GREEN + "[INFO] Start!.")
+            open_terminal_windows()
             break
         else:
             print(Fore.RED + "[ERROR] Invalid choice. Please select a valid option.")
-
-    if choice != '3':
-        print(Fore.MAGENTA + "[INFO] Opening terminal windows with specified commands...")
-        open_terminal_windows()
 
 if __name__ == '__main__':
     main()
