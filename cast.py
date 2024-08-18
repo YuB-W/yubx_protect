@@ -1,107 +1,207 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, render_template_string, request, jsonify
 import pychromecast
 import logging
+import json
+import os
+import time
+import socket
+
+# Configure logging
+logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Configuration File
+CONFIG_FILE = 'config.json'
+
+def load_config():
+    """Load configuration from a JSON file."""
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as file:
+            return json.load(file)
+    return {"default_volume": 0.5}
+
+def save_config(config):
+    """Save configuration to a JSON file."""
+    with open(CONFIG_FILE, 'w') as file:
+        json.dump(config, file, indent=4)
 
 app = Flask(__name__)
 
-# Initialize logging
-logging.basicConfig(filename='casting.log', level=logging.DEBUG)
+def load_html_content():
+    """Load HTML content from a file."""
+    html_file_path = '/home/kali/Desktop/Python/yubx_protect/index.html'
+    if os.path.exists(html_file_path):
+        with open(html_file_path, 'r') as file:
+            return file.read()
+    return "<h1>HTML file not found</h1>"
 
-# Discover Chromecast devices
-chromecasts, browser = pychromecast.get_chromecasts()
-devices = {cc.device.friendly_name: cc for cc in chromecasts}
+HTML_CONTENT = load_html_content()
+
+def discover_chromecast_devices(timeout=5):
+    """Discover Chromecast devices with a specified timeout."""
+    logging.info("Discovering Chromecast devices...")
+    try:
+        chromecasts, _ = pychromecast.get_chromecasts(timeout=timeout)
+        return chromecasts
+    except Exception as e:
+        logging.error(f"An error occurred while discovering devices: {e}")
+        return []
+
+def get_ip_address(interface):
+    """Get the IP address of a specified network interface."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(('8.8.8.8', 80))  # Connect to an external address
+        ip_address = s.getsockname()[0]
+        s.close()
+        return ip_address
+    except Exception as e:
+        logging.error(f"Unable to get IP address for interface {interface}: {e}")
+        return "0.0.0.0"
 
 @app.route('/')
 def index():
-    return render_template('index.html', devices=list(devices.keys()))
-
-@app.route('/discover_devices', methods=['GET'])
-def discover_devices():
-    try:
-        global chromecasts, browser, devices
-        chromecasts, browser = pychromecast.get_chromecasts()
-        devices = {cc.device.friendly_name: cc for cc in chromecasts}
-
-        # Return devices as JSON
-        return jsonify(devices), 200
-
-    except Exception as e:
-        logging.error(f"Error discovering devices: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/cast_text', methods=['POST'])
-def cast_text():
-    try:
-        device_name = request.json.get('device_name')
-        text = request.json.get('text')
-        cc = devices.get(device_name)
-        if not cc:
-            return jsonify({'error': 'Device not found'}), 404
-
-        # Cast text to the device
-        mc = cc.media_controller
-        mc.play_media(f"http://translate.google.com/translate_tts?tl=en&q={text}", 'audio/mpeg')
-        mc.block_until_active()
-        return jsonify({'status': 'Text casted successfully'}), 200
-
-    except Exception as e:
-        logging.error(f"Error casting text: {e}")
-        return jsonify({'error': str(e)}), 500
+    """Render the main page with HTML content."""
+    chromecasts = discover_chromecast_devices()
+    return render_template_string(HTML_CONTENT, chromecasts=chromecasts)
 
 @app.route('/cast_media', methods=['POST'])
 def cast_media():
-    try:
-        device_name = request.json.get('device_name')
-        media_url = request.json.get('media_url')
-        media_type = request.json.get('media_type')
-        duration = request.json.get('duration', 0)
-        cc = devices.get(device_name)
-        if not cc:
-            return jsonify({'error': 'Device not found'}), 404
+    """Cast media to selected devices."""
+    data = request.json
+    device_ids = data.get('device_ids', [])
+    media_url = data.get('media_url', '')
+    media_type = data.get('media_type', '')
+    duration = data.get('duration', None)
+    chromecasts = discover_chromecast_devices()
 
-        # Cast media to the device
-        mc = cc.media_controller
-        mc.play_media(media_url, media_type)
-        mc.block_until_active()
-        mc.play()
-        if duration > 0:
-            mc.pause()
-        return jsonify({'status': 'Media casted successfully'}), 200
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Casting media {media_url} to {device.name}...")
+            device.wait()
+            mc = device.media_controller
 
-    except Exception as e:
-        logging.error(f"Error casting media: {e}")
-        return jsonify({'error': str(e)}), 500
+            if not device.is_idle:
+                logging.warning(f"{device.name} is not idle. Skipping casting.")
+                continue
 
-@app.route('/control_device', methods=['POST'])
-def control_device():
-    try:
-        action = request.json.get('action')
-        device_name = request.json.get('device_name')
-        cc = devices.get(device_name)
-        if not cc:
-            return jsonify({'error': 'Device not found'}), 404
+            mc.play_media(media_url, media_type)
+            mc.block_until_active()
 
-        # Perform the action on the device
-        if action == 'shutdown':
-            cc.quit_app()
-        elif action == 'turn_on':
-            # Chromecast does not have a turn-on command; you can send a command to wake it up
-            cc.media_controller.block_until_active()
-        elif action == 'mute':
-            cc.set_volume_muted(True)
-        elif action == 'unmute':
-            cc.set_volume_muted(False)
-        elif action == 'set_volume':
-            volume = float(request.json.get('volume', 1.0))
-            cc.set_volume(volume)
-        else:
-            return jsonify({'error': 'Invalid action'}), 400
+            if duration:
+                logging.info(f"Waiting for {duration} seconds...")
+                time.sleep(duration)
+                mc.stop()
 
-        return jsonify({'status': f'{action.capitalize()} performed successfully'}), 200
+            logging.info(f"Media casting started on {device.name}.")
+        except Exception as e:
+            logging.error(f"An error occurred while casting: {e}")
 
-    except Exception as e:
-        logging.error(f"Error controlling device: {e}")
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'status': 'success'}), 200
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    """Shutdown the selected devices."""
+    data = request.json
+    device_ids = data.get('device_ids', [])
+    chromecasts = discover_chromecast_devices()
+
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Shutting down {device.name}...")
+            device.quit_app()
+            logging.info(f"{device.name} has been shut down.")
+        except Exception as e:
+            logging.error(f"Error shutting down {device.name}: {e}")
+
+    return jsonify({'status': 'success'}), 200
+
+@app.route('/turn_on', methods=['POST'])
+def turn_on():
+    """Turn on the selected devices by playing default media."""
+    data = request.json
+    device_ids = data.get('device_ids', [])
+    chromecasts = discover_chromecast_devices()
+
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Turning on {device.name}...")
+            device.wait()
+            mc = device.media_controller
+            mc.play_media('http://192.168.2.41:5000/', 'video/mp4')
+            mc.block_until_active()
+            logging.info(f"{device.name} turned on and playing default media.")
+        except Exception as e:
+            logging.error(f"Error turning on {device.name}: {e}")
+
+    return jsonify({'status': 'success'}), 200
+
+@app.route('/set_volume', methods=['POST'])
+def set_volume():
+    """Set volume for the selected devices."""
+    data = request.json
+    device_ids = data.get('device_ids', [])
+    volume_level = data.get('volume_level', 0.5)
+    chromecasts = discover_chromecast_devices()
+
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Setting volume to {volume_level} on {device.name}...")
+            device.wait()
+            mc = device.media_controller
+            mc.set_volume(volume_level)
+            logging.info(f"Volume set on {device.name}.")
+        except Exception as e:
+            logging.error(f"Error setting volume on {device.name}: {e}")
+
+    return jsonify({'status': 'success'}), 200
+
+@app.route('/mute', methods=['POST'])
+def mute():
+    """Mute the selected devices."""
+    data = request.json
+    device_ids = data.get('device_ids', [])
+    chromecasts = discover_chromecast_devices()
+
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Muting {device.name}...")
+            device.wait()
+            mc = device.media_controller
+            mc.set_volume(0)
+            logging.info(f"{device.name} is muted.")
+        except Exception as e:
+            logging.error(f"Error muting {device.name}: {e}")
+
+    return jsonify({'status': 'success'}), 200
+
+@app.route('/unmute', methods=['POST'])
+def unmute():
+    """Unmute the selected devices."""
+    data = request.json
+    device_ids = data.get('device_ids', [])
+    chromecasts = discover_chromecast_devices()
+
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Unmuting {device.name}...")
+            device.wait()
+            mc = device.media_controller
+            default_volume = load_config().get('default_volume', 0.5)
+            mc.set_volume(default_volume)
+            logging.info(f"{device.name} is unmuted.")
+        except Exception as e:
+            logging.error(f"Error unmuting {device.name}: {e}")
+
+    return jsonify({'status': 'success'}), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    ip_address = get_ip_address('eth0')
+    print(f"\nWebsite: http://{ip_address}:5001\n")
+    app.run(debug=True, host='0.0.0.0', port=5001)
