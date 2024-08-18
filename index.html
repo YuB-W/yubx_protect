@@ -4,232 +4,133 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YuB-X Cyber Command Center</title>
-    <style>
-        body {
-            background-color: #1a1a1a;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-        }
-        h1, h2 {
-            text-align: center;
-            color: #00ccff;
-        }
-        label {
-            display: block;
-            margin-top: 10px;
-        }
-        input, select {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            border: none;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #00ccff;
-            color: #ffffff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0099cc;
-        }
-        .select-device {
-            margin-bottom: 20px;
-        }
-        .action-button {
-            margin-top: 20px;
-        }
-    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>YuB-X Cyber Command Center</h1>
-        <h2>Available Devices</h2>
+    <h1>YuB-X Cyber Command Center</h1>
 
-        <div id="device-list"></div>
+    <h2>Available Devices</h2>
+    <button onclick="discoverDevices()">Discover Devices</button>
+    <select id="deviceSelect">
+        {% for device in devices %}
+            <option value="{{ device }}">{{ device }}</option>
+        {% endfor %}
+    </select>
 
-        <button onclick="discoverDevices()">Discover Devices</button>
+    <h2>Cast Text</h2>
+    <input type="text" id="textMessage" placeholder="Text message">
+    <button onclick="castText()">Cast Text</button>
 
-        <div class="select-device">
-            <label for="device-select">Select Device</label>
-            <select id="device-select">
-                <!-- Dynamically populated -->
-            </select>
-        </div>
+    <h2>Cast Media</h2>
+    <input type="text" id="mediaUrl" placeholder="Enter Media URL">
+    <input type="text" id="mediaType" placeholder="Enter Media Type">
+    <input type="number" id="mediaDuration" placeholder="Enter Duration (seconds)">
+    <button onclick="castMedia()">Cast Media</button>
 
-        <h2>Cast Text</h2>
-        <label for="text-message">Text message</label>
-        <input type="text" id="text-message" placeholder="Enter text to cast">
-        <label for="animation">Animation</label>
-        <input type="text" id="animation" placeholder="Enter animation type">
-        <button onclick="castText()">Cast Text</button>
-
-        <h2>Cast Media</h2>
-        <label for="media-url">Enter Media URL</label>
-        <input type="text" id="media-url" placeholder="Enter media URL">
-        <label for="media-type">Enter Media Type</label>
-        <input type="text" id="media-type" placeholder="Enter media type">
-        <label for="duration">Enter Duration (seconds)</label>
-        <input type="number" id="duration" placeholder="Enter duration">
-        <button onclick="castMedia()">Cast Media</button>
-
-        <h2>Device Control</h2>
-        <button onclick="shutdownDevice()">Shutdown Device</button>
-        <button onclick="turnOnDevice()">Turn On</button>
-        <label for="volume-level">Set Volume</label>
-        <input type="number" id="volume-level" placeholder="Enter volume level (0.0 to 1.0)">
-        <button onclick="setVolume()">Set Volume</button>
-        <button onclick="muteDevice()">Mute</button>
-        <button onclick="unmuteDevice()">Unmute</button>
-    </div>
+    <h2>Device Control</h2>
+    <button onclick="controlDevice('shutdown')">Shutdown Device</button>
+    <button onclick="controlDevice('turn_on')">Turn On Device</button>
+    <button onclick="controlDevice('mute')">Mute</button>
+    <button onclick="controlDevice('unmute')">Unmute</button>
+    <input type="number" id="volume" placeholder="Set Volume">
+    <button onclick="controlDevice('set_volume')">Set Volume</button>
 
     <script>
+        function getSelectedDevice() {
+            const deviceSelect = document.getElementById('deviceSelect');
+            return deviceSelect.options[deviceSelect.selectedIndex].value;
+        }
+
         function discoverDevices() {
             fetch('/discover_devices')
                 .then(response => response.json())
                 .then(data => {
-                    const deviceSelect = document.getElementById('device-select');
+                    const deviceSelect = document.getElementById('deviceSelect');
                     deviceSelect.innerHTML = '';
-
-                    data.forEach(device => {
-                        const option = document.createElement('option');
-                        option.value = device.name;
-                        option.textContent = device.name;
+                    for (const device in data) {
+                        let option = document.createElement('option');
+                        option.value = device;
+                        option.text = device;
                         deviceSelect.appendChild(option);
-                    });
-
-                    const deviceList = document.getElementById('device-list');
-                    deviceList.innerHTML = JSON.stringify(data, null, 2);
+                    }
+                    alert("Devices discovered successfully!");
+                })
+                .catch(error => {
+                    alert('Failed to discover devices: ' + error);
+                    console.error('Error:', error);
                 });
         }
 
         function castText() {
-            const textMessage = document.getElementById('text-message').value;
-            const animation = document.getElementById('animation').value;
-            const deviceName = document.getElementById('device-select').value;
-
+            const textMessage = document.getElementById('textMessage').value;
+            const device_name = getSelectedDevice();
             fetch('/cast_text', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text_message: textMessage,
-                    animation: animation,
-                    device_name: deviceName
-                })
+                body: JSON.stringify({ device_name, text: textMessage })
             })
             .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error:', error));
+            .then(data => {
+                if (data.error) {
+                    alert("Error casting text: " + data.error);
+                } else {
+                    alert("Text casted successfully!");
+                }
+            })
+            .catch(error => {
+                alert('Failed to cast text: ' + error);
+                console.error('Error:', error);
+            });
         }
 
         function castMedia() {
-            const mediaUrl = document.getElementById('media-url').value;
-            const mediaType = document.getElementById('media-type').value;
-            const duration = document.getElementById('duration').value;
-            const deviceName = document.getElementById('device-select').value;
-
+            const mediaUrl = document.getElementById('mediaUrl').value;
+            const mediaType = document.getElementById('mediaType').value;
+            const mediaDuration = document.getElementById('mediaDuration').value;
+            const device_name = getSelectedDevice();
             fetch('/cast_media', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    media_url: mediaUrl,
-                    media_type: mediaType,
-                    duration: duration,
-                    device_name: deviceName
-                })
+                body: JSON.stringify({ device_name, media_url: mediaUrl, media_type: mediaType, duration: mediaDuration })
             })
             .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error:', error));
+            .then(data => {
+                if (data.error) {
+                    alert("Error casting media: " + data.error);
+                } else {
+                    alert("Media casted successfully!");
+                }
+            })
+            .catch(error => {
+                alert('Failed to cast media: ' + error);
+                console.error('Error:', error);
+            });
         }
 
-        function shutdownDevice() {
-            const deviceName = document.getElementById('device-select').value;
+        function controlDevice(action) {
+            const device_name = getSelectedDevice();
+            let payload = { device_name, action };
 
-            fetch('/shutdown_device', {
+            if (action === 'set_volume') {
+                payload.volume = document.getElementById('volume').value;
+            }
+
+            fetch('/control_device', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    device_name: deviceName
-                })
+                body: JSON.stringify(payload)
             })
             .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error:', error));
-        }
-
-        function turnOnDevice() {
-            const deviceName = document.getElementById('device-select').value;
-
-            fetch('/turn_on_device', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    device_name: deviceName
-                })
+            .then(data => {
+                if (data.error) {
+                    alert("Error controlling device: " + data.error);
+                } else {
+                    alert(action.charAt(0).toUpperCase() + action.slice(1) + " performed successfully!");
+                }
             })
-            .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error:', error));
-        }
-
-        function setVolume() {
-            const volumeLevel = document.getElementById('volume-level').value;
-            const deviceName = document.getElementById('device-select').value;
-
-            fetch('/set_volume', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    volume_level: volumeLevel,
-                    device_name: deviceName
-                })
-            })
-            .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error:', error));
-        }
-
-        function muteDevice() {
-            const deviceName = document.getElementById('device-select').value;
-
-            fetch('/mute_device', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    device_name: deviceName
-                })
-            })
-            .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error:', error));
-        }
-
-        function unmuteDevice() {
-            const deviceName = document.getElementById('device-select').value;
-
-            fetch('/unmute_device', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    device_name: deviceName
-                })
-            })
-            .then(response => response.json())
-            .then(data => alert(data.message))
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                alert('Failed to control device: ' + error);
+                console.error('Error:', error);
+            });
         }
     </script>
 </body>
