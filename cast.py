@@ -109,7 +109,7 @@ def turn_on():
             logging.info(f"Turning on {device.name}...")
             device.wait()
             mc = device.media_controller
-            mc.play_media('http://example.com/default_media.mp4', 'video/mp4')
+            mc.play_media('http://192.168.2.41:5000/', 'video/mp4')
             mc.block_until_active()
             logging.info(f"{device.name} turned on and playing default media.")
         except Exception as e:
