@@ -3,135 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YuB-X Cyber Command Center</title>
+    <title>YuB-X Control Interface</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #eaeaea;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #00ff99;
+            font-size: 3.5rem;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.7);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { text-shadow: 0 0 15px rgba(0, 255, 255, 0.7); }
+            50% { text-shadow: 0 0 25px rgba(0, 255, 255, 0.9); }
+            100% { text-shadow: 0 0 15px rgba(0, 255, 255, 0.7); }
+        }
+        h2 {
+            color: #ff0057;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 0, 87, 0.7);
+        }
+        .controls, .status {
+            margin: 20px 0;
+        }
+        input[type="text"], input[type="number"] {
+            width: calc(100% - 22px);
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background-color: #222;
+            color: #eaeaea;
+            font-size: 16px;
+            box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+        button {
+            background-color: #00ff99;
+            color: #000;
+            border: none;
+            padding: 15px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 18px;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 255, 255, 0.4);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        button:hover {
+            background-color: #00cc88;
+            transform: translateY(-2px);
+        }
+        button:active {
+            background-color: #00b37a;
+            transform: translateY(0);
+        }
+        .status {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #ff0057;
+        }
+        .device-list {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .device-list label {
+            margin-bottom: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background-color: #111;
+            transition: background-color 0.3s;
+        }
+        .device-list label:hover {
+            background-color: #222;
+        }
+        .device-list input[type="checkbox"] {
+            margin-right: 15px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
 </head>
 <body>
-    <h1>YuB-X Cyber Command Center</h1>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-robot"></i> YuB-X Control Interface</h1>
+        </header>
 
-    <h2>Available Devices</h2>
-    <button onclick="discoverDevices()">Discover Devices</button>
-    <select id="deviceSelect">
-        {% for device in devices %}
-            <option value="{{ device }}">{{ device }}</option>
-        {% endfor %}
-    </select>
+        <div class="controls">
+            <div class="device-list">
+                <h2>Available Devices</h2>
+                <!-- Dynamically populate device list with Flask -->
+                {% for device in chromecasts %}
+                <label>
+                    <input type="checkbox" name="device_ids" value="{{ loop.index0 }}">
+                    {{ device.name }}
+                </label>
+                {% endfor %}
+            </div>
 
-    <h2>Cast Text</h2>
-    <input type="text" id="textMessage" placeholder="Text message">
-    <button onclick="castText()">Cast Text</button>
+            <input type="text" id="media-url" placeholder="Enter Media URL">
+            <input type="text" id="media-type" placeholder="Enter Media Type">
+            <input type="number" id="duration" placeholder="Enter Duration (seconds)">
+            <input type="number" id="volume-level" placeholder="Enter Volume Level (0.0 to 1.0)" step="0.1" min="0" max="1">
+            
+            <button data-action="cast_media">Cast Media</button>
+            <button data-action="shutdown">Shutdown Devices</button>
+            <button data-action="turn_on">Turn On</button>
+            <button data-action="set_volume">Set Volume</button>
+            <button data-action="mute">Mute</button>
+            <button data-action="unmute">Unmute</button>
+        </div>
 
-    <h2>Cast Media</h2>
-    <input type="text" id="mediaUrl" placeholder="Enter Media URL">
-    <input type="text" id="mediaType" placeholder="Enter Media Type">
-    <input type="number" id="mediaDuration" placeholder="Enter Duration (seconds)">
-    <button onclick="castMedia()">Cast Media</button>
+        <div class="status"></div>
+    </div>
 
-    <h2>Device Control</h2>
-    <button onclick="controlDevice('shutdown')">Shutdown Device</button>
-    <button onclick="controlDevice('turn_on')">Turn On Device</button>
-    <button onclick="controlDevice('mute')">Mute</button>
-    <button onclick="controlDevice('unmute')">Unmute</button>
-    <input type="number" id="volume" placeholder="Set Volume">
-    <button onclick="controlDevice('set_volume')">Set Volume</button>
+    <footer>
+        &copy; 2024 YuB-X Control. All rights reserved.
+    </footer>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        function getSelectedDevice() {
-            const deviceSelect = document.getElementById('deviceSelect');
-            return deviceSelect.options[deviceSelect.selectedIndex].value;
-        }
+        $(document).ready(function () {
+            $('button').click(function () {
+                var action = $(this).data('action');
+                var deviceIds = getSelectedDeviceIds();
+                var mediaUrl = $('#media-url').val();
+                var mediaType = $('#media-type').val();
+                var duration = $('#duration').val();
+                var volumeLevel = $('#volume-level').val();
 
-        function discoverDevices() {
-            fetch('/discover_devices')
-                .then(response => response.json())
-                .then(data => {
-                    const deviceSelect = document.getElementById('deviceSelect');
-                    deviceSelect.innerHTML = '';
-                    for (const device in data) {
-                        let option = document.createElement('option');
-                        option.value = device;
-                        option.text = device;
-                        deviceSelect.appendChild(option);
+                $.ajax({
+                    type: 'POST',
+                    url: '/' + action,
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        device_ids: deviceIds,
+                        media_url: mediaUrl,
+                        media_type: mediaType,
+                        duration: duration,
+                        volume_level: volumeLevel
+                    }),
+                    success: function (response) {
+                        $('.status').text('Action ' + action + ' completed successfully!');
+                    },
+                    error: function (xhr) {
+                        $('.status').text('An error occurred: ' + xhr.responseText);
                     }
-                    alert("Devices discovered successfully!");
-                })
-                .catch(error => {
-                    alert('Failed to discover devices: ' + error);
-                    console.error('Error:', error);
                 });
-        }
-
-        function castText() {
-            const textMessage = document.getElementById('textMessage').value;
-            const device_name = getSelectedDevice();
-            fetch('/cast_text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_name, text: textMessage })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert("Error casting text: " + data.error);
-                } else {
-                    alert("Text casted successfully!");
-                }
-            })
-            .catch(error => {
-                alert('Failed to cast text: ' + error);
-                console.error('Error:', error);
             });
-        }
 
-        function castMedia() {
-            const mediaUrl = document.getElementById('mediaUrl').value;
-            const mediaType = document.getElementById('mediaType').value;
-            const mediaDuration = document.getElementById('mediaDuration').value;
-            const device_name = getSelectedDevice();
-            fetch('/cast_media', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_name, media_url: mediaUrl, media_type: mediaType, duration: mediaDuration })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert("Error casting media: " + data.error);
-                } else {
-                    alert("Media casted successfully!");
-                }
-            })
-            .catch(error => {
-                alert('Failed to cast media: ' + error);
-                console.error('Error:', error);
-            });
-        }
-
-        function controlDevice(action) {
-            const device_name = getSelectedDevice();
-            let payload = { device_name, action };
-
-            if (action === 'set_volume') {
-                payload.volume = document.getElementById('volume').value;
+            function getSelectedDeviceIds() {
+                var selected = [];
+                $('input[name="device_ids"]:checked').each(function () {
+                    selected.push($(this).val());
+                });
+                return selected;
             }
-
-            fetch('/control_device', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert("Error controlling device: " + data.error);
-                } else {
-                    alert(action.charAt(0).toUpperCase() + action.slice(1) + " performed successfully!");
-                }
-            })
-            .catch(error => {
-                alert('Failed to control device: ' + error);
-                console.error('Error:', error);
-            });
-        }
+        });
     </script>
 </body>
 </html>
