@@ -1,6 +1,5 @@
 import os
 import subprocess
-import time
 import urllib.request
 from urllib.error import HTTPError, URLError
 from colorama import Fore, Style, init
@@ -22,16 +21,29 @@ def create_dir_if_missing(path):
         print(Fore.CYAN + f"[INFO] Created directory: {path}" + Style.RESET_ALL)
 
 def download_file(url, dest):
-    """Download a file if it doesn't exist locally."""
-    if not os.path.exists(dest):
+    """Download a file if it doesn't exist locally or if it's outdated."""
+    try:
+        print(Fore.YELLOW + f"[INFO] Downloading {dest} from GitHub..." + Style.RESET_ALL)
+        urllib.request.urlretrieve(url, dest)
+        print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}." + Style.RESET_ALL)
+    except HTTPError as e:
+        print(Fore.RED + f"[ERROR] HTTP Error: {e.code} when trying to download {url}" + Style.RESET_ALL)
+    except URLError as e:
+        print(Fore.RED + f"[ERROR] URL Error: {e.reason} when trying to download {url}" + Style.RESET_ALL)
+
+def install_packages():
+    """Install required Python packages using pip."""
+    required_packages = [
+        'subprocess', 'threading', 'time', 'logging', 'datetime', 'scapy', 
+        'flask', 'playsound', 'requests', 'numpy'
+    ]
+    
+    for package in required_packages:
         try:
-            print(Fore.YELLOW + f"[INFO] File {dest} is missing. Downloading from GitHub..." + Style.RESET_ALL)
-            urllib.request.urlretrieve(url, dest)
-            print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}." + Style.RESET_ALL)
-        except HTTPError as e:
-            print(Fore.RED + f"[ERROR] HTTP Error: {e.code} when trying to download {url}" + Style.RESET_ALL)
-        except URLError as e:
-            print(Fore.RED + f"[ERROR] URL Error: {e.reason} when trying to download {url}" + Style.RESET_ALL)
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+            print(Fore.GREEN + f"[SUCCESS] Installed {package}." + Style.RESET_ALL)
+        except subprocess.CalledProcessError:
+            print(Fore.RED + f"[ERROR] Failed to install {package}." + Style.RESET_ALL)
 
 def open_terminal_windows():
     """Open terminal windows with different commands."""
@@ -69,6 +81,9 @@ def main():
     for filename, url in files.items():
         dest_path = os.path.join(base_dir, filename)
         download_file(url, dest_path)
+
+    print(Fore.MAGENTA + "[INFO] Installing required packages..." + Style.RESET_ALL)
+    install_packages()
 
     print(Fore.MAGENTA + "[INFO] Opening terminal windows with specified commands..." + Style.RESET_ALL)
     open_terminal_windows()
