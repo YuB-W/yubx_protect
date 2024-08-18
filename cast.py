@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify
 import pychromecast
 import logging
 import threading
@@ -29,7 +29,7 @@ def get_device(name):
 
 @app.route('/')
 def index():
-    return send_file('index.html')
+    return render_template('index.html')
 
 @app.route('/discover_devices', methods=['GET'])
 def discover_devices():
@@ -190,5 +190,5 @@ def shutdown_all_devices():
 
 if __name__ == '__main__':
     ip_address = socket.gethostbyname(socket.gethostname())
-    print(f"V1 Website: http://{ip_address}:5001\n")
+    print(f"V2 Website: http://{ip_address}:5001\n")
     app.run(debug=True, host='0.0.0.0', port=5001)
