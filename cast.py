@@ -25,7 +25,7 @@ def save_config(config):
 app = Flask(__name__)
 
 # Read HTML content from file
-with open('/home/kali/Desktop/Python/website.html', 'r') as file:
+with open('/home/kali/Desktop/Python/yubx_protect/index.html', 'r') as file:
     MAP_HTML = file.read()
 
 def discover_chromecast_devices(timeout=5):
