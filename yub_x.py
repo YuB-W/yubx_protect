@@ -1,206 +1,180 @@
-from flask import Flask, render_template_string, request, jsonify
-import pychromecast
-import logging
-import json
 import os
-import socket
+import sys
+import subprocess
+import time
+import urllib.request
+from urllib.error import HTTPError, URLError
+from colorama import Fore, Style, init
 
-# Configure logging
-logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Initialize colorama for colorful terminal output
+init(autoreset=True)
 
-# Configuration File
-CONFIG_FILE = 'config.json'
+def print_banner():
+    """Print a cool cyber-style YuB-X banner."""
+    banner = """
+    ====================================
+          ██╗   ██╗██╗   ██╗██████╗ 
+          ██║   ██║██║   ██║██╔══██╗
+          ██║   ██║██║   ██║██████╔╝
+          ██║   ██║██║   ██║██╔═══╝ 
+          ╚██████╔╝╚██████╔╝██║     
+           ╚═════╝  ╚═════╝ ╚═╝     
+    ====================================
+               YuB-X Protect V1.0
+    ====================================
+    """
+    print(Fore.GREEN + banner)
 
-def load_config():
-    """Load configuration from a JSON file."""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as file:
-            return json.load(file)
-    return {"default_volume": 0.5}
+def create_dir_if_missing(path):
+    """Create a directory if it doesn't exist."""
+    if not os.path.exists(path):
+        os.makedirs(path)
+        print(Fore.CYAN + f"[INFO] Created directory: {path}")
 
-def save_config(config):
-    """Save configuration to a JSON file."""
-    with open(CONFIG_FILE, 'w') as file:
-        json.dump(config, file, indent=4)
-
-app = Flask(__name__)
-
-def load_html_content():
-    """Load HTML content from a file."""
-    html_file_path = '/home/kali/Desktop/Python/yubx_protect/index.html'
-    if os.path.exists(html_file_path):
-        with open(html_file_path, 'r') as file:
-            return file.read()
-    return "<h1>HTML file not found</h1>"
-
-HTML_CONTENT = load_html_content()
-
-def discover_chromecast_devices(timeout=5):
-    """Discover Chromecast devices with a specified timeout."""
-    logging.info("Discovering Chromecast devices...")
+def download_file(url, dest):
+    """Download a file from a URL to a local destination."""
     try:
-        chromecasts, _ = pychromecast.get_chromecasts(timeout=timeout)
-        return chromecasts
-    except Exception as e:
-        logging.error(f"An error occurred while discovering devices: {e}")
-        return []
+        if not os.path.exists(dest):
+            print(Fore.YELLOW + f"[INFO] {dest} is missing. Downloading...")
+            urllib.request.urlretrieve(url, dest)
+            print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}.")
+        else:
+            print(Fore.CYAN + f"[INFO] {dest} already exists. Skipping download.")
+    except HTTPError as e:
+        print(Fore.RED + f"[ERROR] HTTP Error {e.code} while downloading {url}")
+    except URLError as e:
+        print(Fore.RED + f"[ERROR] URL Error {e.reason} while downloading {url}")
 
-def get_ip_address(interface):
-    """Get the IP address of a specified network interface."""
+def is_package_installed(package):
+    """Check if a Python package is installed."""
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(0.1)
-        s.connect(('8.8.8.8', 80))  # Connect to an external address
-        ip_address = s.getsockname()[0]
-        s.close()
-        return ip_address
-    except Exception as e:
-        logging.error(f"Unable to get IP address for interface {interface}: {e}")
-        return "0.0.0.0"
+        subprocess.check_call([sys.executable, '-c', f'import {package}'])
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
-@app.route('/')
-def index():
-    """Render the main page with HTML content."""
-    chromecasts = discover_chromecast_devices()
-    return render_template_string(HTML_CONTENT, chromecasts=chromecasts)
+def install_package(package):
+    """Install a Python package using pip with sudo."""
+    try:
+        print(Fore.YELLOW + f"[INFO] Installing {package}...")
+        subprocess.check_call(['sudo', 'pip3', 'install', package])
+        print(Fore.GREEN + f"[SUCCESS] Installed {package}.")
+    except subprocess.CalledProcessError:
+        print(Fore.RED + f"[ERROR] Failed to install {package}.")
 
-@app.route('/cast_media', methods=['POST'])
-def cast_media():
-    """Cast media to selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    media_url = data.get('media_url', '')
-    media_type = data.get('media_type', '')
-    duration = data.get('duration', None)
-    chromecasts = discover_chromecast_devices()
-
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
+def uninstall_all_packages():
+    """Uninstall all required Python packages."""
+    required_packages = [
+        'flask', 'scapy', 'playsound', 'requests', 'numpy',
+        'pychromecast', 'logging'
+    ]
+    for package in required_packages:
         try:
-            logging.info(f"Casting media {media_url} to {device.name}...")
-            device.wait()
-            mc = device.media_controller
+            print(Fore.YELLOW + f"[INFO] Uninstalling {package}...")
+            subprocess.check_call(['sudo', 'pip3', 'uninstall', '-y', package])
+            print(Fore.GREEN + f"[SUCCESS] Uninstalled {package}.")
+        except subprocess.CalledProcessError:
+            print(Fore.RED + f"[ERROR] Failed to uninstall {package}.")
 
-            if not device.is_idle:
-                logging.warning(f"{device.name} is not idle. Skipping casting.")
-                continue
-
-            mc.play_media(media_url, media_type)
-            mc.block_until_active()
-
-            if duration:
-                logging.info(f"Waiting for {duration} seconds...")
-                mc.stop()
-
-            logging.info(f"Media casting started on {device.name}.")
-        except Exception as e:
-            logging.error(f"An error occurred while casting: {e}")
-
-    return jsonify({'status': 'success'}), 200
-
-@app.route('/shutdown', methods=['POST'])
-def shutdown():
-    """Shutdown the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
-
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
+def remove_files_and_directories(base_dir):
+    """Remove all files and directories in the base directory."""
+    if os.path.exists(base_dir):
         try:
-            logging.info(f"Shutting down {device.name}...")
-            device.quit_app()
-            logging.info(f"{device.name} has been shut down.")
-        except Exception as e:
-            logging.error(f"Error shutting down {device.name}: {e}")
+            print(Fore.YELLOW + f"[INFO] Deleting directory: {base_dir}...")
+            subprocess.check_call(['sudo', 'rm', '-r', '-f', base_dir])
+            print(Fore.GREEN + f"[SUCCESS] Removed directory: {base_dir}")
+        except subprocess.CalledProcessError as e:
+            print(Fore.RED + f"[ERROR] Failed to remove directory {base_dir}: {e}")
 
-    return jsonify({'status': 'success'}), 200
+def install_packages():
+    """Install required Python packages."""
+    required_packages = [
+        'flask', 'scapy', 'playsound', 'requests', 'numpy',
+        'pychromecast', 'logging'
+    ]
+    for package in required_packages:
+        install_package(package)
 
-@app.route('/turn_on', methods=['POST'])
-def turn_on():
-    """Turn on the selected devices by playing default media."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
+def reinstall_packages():
+    """Reinstall required Python packages."""
+    uninstall_all_packages()
+    install_packages()
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Turning on {device.name}...")
-            device.wait()
-            mc = device.media_controller
-            mc.play_media('http://192.168.2.41:5000/', 'video/mp4')
-            mc.block_until_active()
-            logging.info(f"{device.name} turned on and playing default media.")
-        except Exception as e:
-            logging.error(f"Error turning on {device.name}: {e}")
+def open_terminal_windows():
+    """Open terminal windows with different commands."""
+    commands = [
+        'sudo mousepad /home/kali/Desktop/Python/yubx_protect/website.html',
+        'sudo mousepad /home/kali/Desktop/Python/yubx_protect/index.html',
+        'sudo mousepad /home/kali/Desktop/Python/yubx_protect/wifi_protect.py',
+        'sudo mousepad /home/kali/Desktop/Python/yubx_protect/cast.py',
+        'sudo python3 /home/kali/Desktop/Python/yubx_protect/sleep.py',
+        'sudo python3 /home/kali/Desktop/Python/yubx_protect/cast.py',
+        'sudo python3 /home/kali/Desktop/Python/yubx_protect/wifi_protect.py'
+    ]
+    
+    # Open terminal windows with the commands
+    for command in commands:
+        print(Fore.YELLOW + f"[INFO] Opening terminal for: {command}")
+        subprocess.Popen(['xterm', '-hold', '-e', f'sh -c "{command}"'])
+        time.sleep(1)  # Delay to ensure each terminal opens correctly
 
-    return jsonify({'status': 'success'}), 200
+def main():
+    print_banner()
 
-@app.route('/set_volume', methods=['POST'])
-def set_volume():
-    """Set volume for the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    volume_level = data.get('volume_level', 0.5)
-    chromecasts = discover_chromecast_devices()
+    base_dir = '/home/kali/Desktop/Python/yubx_protect'
+    create_dir_if_missing(base_dir)
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            volume_level = float(volume_level)
-            if 0.0 <= volume_level <= 1.0:
-                logging.info(f"Setting volume to {volume_level} on {device.name}...")
-                device.wait()
-                device.set_volume(volume_level)
-                logging.info(f"Volume set to {volume_level} on {device.name}.")
-            else:
-                logging.warning(f"Volume level {volume_level} is out of range. Skipping.")
-        except Exception as e:
-            logging.error(f"Error setting volume on {device.name}: {e}")
+    # Files to download from GitHub
+    files = {
+        "website.html": "https://github.com/YuB-W/yubx_protect/raw/main/website.html",
+        "wifi_protect.py": "https://github.com/YuB-W/yubx_protect/raw/main/wifi_protect.py",
+        "sleep.py": "https://github.com/YuB-W/yubx_protect/raw/main/sleep.py",
+        "fix_wlan.py": "https://github.com/YuB-W/yubx_protect/raw/main/fix_wlan.py",
+        "cast.py": "https://github.com/YuB-W/yubx_protect/raw/main/cast.py",
+        "index.html": "https://github.com/YuB-W/yubx_protect/raw/main/index.html",
+        "detect.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/detect.m4a",
+        "welcome.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/welcome.m4a",
+        "alert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/alert_r.m4a"
+    }
 
-    return jsonify({'status': 'success'}), 200
+    for filename, url in files.items():
+        dest_path = os.path.join(base_dir, filename)
+        download_file(url, dest_path)
 
-@app.route('/mute', methods=['POST'])
-def mute():
-    """Mute the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
+    # User choices for managing packages and directories
+    while True:
+        print(Fore.MAGENTA + """
+        ====================================
+            1. Install packages
+            2. Reinstall packages
+            3. Delete folders (but keep Python packages)
+            4. start
+            5. Exit
+        ====================================
+        """)
+        choice = input("Enter your choice (1-4): ").strip()
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Muting {device.name}...")
-            device.wait()
-            device.set_volume(0)
-            logging.info(f"{device.name} is muted.")
-        except Exception as e:
-            logging.error(f"Error muting {device.name}: {e}")
-
-    return jsonify({'status': 'success'}), 200
-
-@app.route('/unmute', methods=['POST'])
-def unmute():
-    """Unmute the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
-
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Unmuting {device.name}...")
-            device.wait()
-            default_volume = load_config().get('default_volume', 0.5)
-            device.set_volume(default_volume)
-            logging.info(f"{device.name} is unmuted.")
-        except Exception as e:
-            logging.error(f"Error unmuting {device.name}: {e}")
-
-    return jsonify({'status': 'success'}), 200
+        if choice == '1':
+            print(Fore.MAGENTA + "[INFO] Installing required packages...")
+            install_packages()
+            break
+        elif choice == '2':
+            print(Fore.MAGENTA + "[INFO] Reinstalling required packages...")
+            reinstall_packages()
+            break
+        elif choice == '3':
+            print(Fore.MAGENTA + "[INFO] Deleting folders (but keeping Python packages)...")
+            remove_files_and_directories(base_dir)
+            break
+        elif choice == '5':
+            print(Fore.GREEN + "[INFO] Exiting.")
+            break
+        elif choice == '4':
+            print(Fore.GREEN + "[INFO] Start!.")
+            open_terminal_windows()
+            break
+        else:
+            print(Fore.RED + "[ERROR] Invalid choice. Please select a valid option.")
 
 if __name__ == '__main__':
-    ip_address = get_ip_address('eth0')
-    print(f"\nWebsite: http://{ip_address}:5001\n")
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    main()
