@@ -4,7 +4,8 @@ import subprocess
 import time
 import urllib.request
 from urllib.error import HTTPError, URLError
-from colorama import Fore, Style, init
+from colorama import Fore, init
+import hashlib
 
 # Initialize colorama for colorful terminal output
 init(autoreset=True)
@@ -20,7 +21,7 @@ def print_banner():
           ╚██████╔╝╚██████╔╝██║     
            ╚═════╝  ╚═════╝ ╚═╝     
     ====================================
-               YuB-X Protect V1.2
+               YuB-X Protect V1.3
     ====================================
     """
     print(Fore.GREEN + banner)
@@ -31,15 +32,28 @@ def create_dir_if_missing(path):
         os.makedirs(path)
         print(Fore.CYAN + f"[INFO] Created directory: {path}")
 
+def calculate_checksum(filepath):
+    """Calculate and return the checksum of the file."""
+    hash_alg = hashlib.sha256()
+    with open(filepath, 'rb') as f:
+        while chunk := f.read(8192):
+            hash_alg.update(chunk)
+    return hash_alg.hexdigest()
+
 def download_file(url, dest):
     """Download a file from a URL to a local destination."""
     try:
-        if not os.path.exists(dest):
-            print(Fore.YELLOW + f"[INFO] {dest} is missing. Downloading...")
-            urllib.request.urlretrieve(url, dest)
-            print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}.")
-        else:
-            print(Fore.CYAN + f"[INFO] {dest} already exists. Skipping download.")
+        temp_file = dest + ".tmp"
+        urllib.request.urlretrieve(url, temp_file)
+        temp_checksum = calculate_checksum(temp_file)
+        if os.path.exists(dest):
+            current_checksum = calculate_checksum(dest)
+            if temp_checksum == current_checksum:
+                os.remove(temp_file)
+                print(Fore.CYAN + f"[INFO] {dest} is up-to-date.")
+                return
+        os.rename(temp_file, dest)
+        print(Fore.GREEN + f"[SUCCESS] Downloaded and updated {dest}.")
     except HTTPError as e:
         print(Fore.RED + f"[ERROR] HTTP Error {e.code} while downloading {url}")
     except URLError as e:
@@ -148,11 +162,11 @@ def main():
             1. Install packages
             2. Reinstall packages
             3. Delete folders (but keep Python packages)
-            4. start
+            4. Start
             5. Exit
         ====================================
         """)
-        choice = input("Enter your choice (1-4): ").strip()
+        choice = input("Enter your choice (1-5): ").strip()
 
         if choice == '1':
             print(Fore.MAGENTA + "[INFO] Installing required packages...")
@@ -166,12 +180,12 @@ def main():
             print(Fore.MAGENTA + "[INFO] Deleting folders (but keeping Python packages)...")
             remove_files_and_directories(base_dir)
             break
+        elif choice == '4':
+            print(Fore.GREEN + "[INFO] Starting...")
+            open_terminal_windows()
+            break
         elif choice == '5':
             print(Fore.GREEN + "[INFO] Exiting.")
-            break
-        elif choice == '4':
-            print(Fore.GREEN + "[INFO] Start!.")
-            open_terminal_windows()
             break
         else:
             print(Fore.RED + "[ERROR] Invalid choice. Please select a valid option.")
