@@ -5,7 +5,7 @@
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
-            background-color: #1e1e1e;
+            background-color: #0d0d0d;
             color: #00ff00;
             margin: 0;
             padding: 0;
@@ -14,7 +14,6 @@
         h1 {
             color: #00ff00;
             margin-top: 20px;
-            margin-bottom: 20px;
         }
         .device-list {
             margin: 20px;
@@ -23,12 +22,12 @@
             justify-content: center;
         }
         .device-item {
-            background-color: #333;
+            background-color: #222;
             border: 1px solid #00ff00;
             border-radius: 5px;
             padding: 10px;
-            margin: 5px;
-            width: 220px;
+            margin: 10px;
+            width: 250px;
             text-align: left;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
         }
@@ -41,16 +40,17 @@
             padding: 10px;
             border: none;
             border-radius: 5px;
-            background-color: #007700;
+            background-color: #005700;
             color: #00ff00;
             cursor: pointer;
             font-family: 'Courier New', Courier, monospace;
+            transition: background-color 0.3s;
         }
         button:hover {
-            background-color: #005500;
+            background-color: #003d00;
         }
         button:active {
-            background-color: #003300;
+            background-color: #002500;
         }
     </style>
 </head>
@@ -60,7 +60,6 @@
         {% for device in chromecasts %}
         <div class="device-item">
             <h2>{{ device.name }}</h2>
-            <button onclick="castText('{{ loop.index0 }}')">Cast Text</button>
             <button onclick="castMedia('{{ loop.index0 }}')">Cast Media</button>
             <button onclick="shutdownDevice('{{ loop.index0 }}')">Shutdown</button>
             <button onclick="turnOnDevice('{{ loop.index0 }}')">Turn On</button>
@@ -81,10 +80,6 @@
             }).then(response => response.json())
               .then(data => console.log(data))
               .catch(error => console.error('Error:', error));
-        }
-
-        function castText(deviceId) {
-            sendRequest('cast_text', { device_ids: [deviceId], text_message: 'Hello World!' });
         }
 
         function castMedia(deviceId) {
