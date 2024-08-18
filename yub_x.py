@@ -1,49 +1,67 @@
 import os
+import sys
 import subprocess
 import urllib.request
 from urllib.error import HTTPError, URLError
 from colorama import Fore, Style, init
+import time
 
-# Initialize colorama
-init()
+# Initialize colorama for colorful terminal output
+init(autoreset=True)
 
 def print_banner():
     """Print a cool cyber-style YuB-X banner."""
     banner = """
-    YuB-X Protect
+    ====================================
+          ██╗   ██╗██╗   ██╗██████╗ 
+          ██║   ██║██║   ██║██╔══██╗
+          ██║   ██║██║   ██║██████╔╝
+          ██║   ██║██║   ██║██╔═══╝ 
+          ╚██████╔╝╚██████╔╝██║     
+           ╚═════╝  ╚═════╝ ╚═╝     
+    ====================================
+               YuB-X Protect
+    ====================================
     """
-    print(Fore.GREEN + banner + Style.RESET_ALL)
+    print(Fore.GREEN + banner)
 
 def create_dir_if_missing(path):
     """Create a directory if it doesn't exist."""
     if not os.path.exists(path):
         os.makedirs(path)
-        print(Fore.CYAN + f"[INFO] Created directory: {path}" + Style.RESET_ALL)
+        print(Fore.CYAN + f"[INFO] Created directory: {path}")
 
 def download_file(url, dest):
-    """Download a file if it doesn't exist locally or if it's outdated."""
+    """Download a file from a URL to a local destination."""
     try:
-        print(Fore.YELLOW + f"[INFO] Downloading {dest} from GitHub..." + Style.RESET_ALL)
-        urllib.request.urlretrieve(url, dest)
-        print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}." + Style.RESET_ALL)
+        if not os.path.exists(dest):
+            print(Fore.YELLOW + f"[INFO] {dest} is missing. Downloading...")
+            urllib.request.urlretrieve(url, dest)
+            print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}.")
+        else:
+            print(Fore.CYAN + f"[INFO] {dest} already exists. Skipping download.")
     except HTTPError as e:
-        print(Fore.RED + f"[ERROR] HTTP Error: {e.code} when trying to download {url}" + Style.RESET_ALL)
+        print(Fore.RED + f"[ERROR] HTTP Error {e.code} while downloading {url}")
     except URLError as e:
-        print(Fore.RED + f"[ERROR] URL Error: {e.reason} when trying to download {url}" + Style.RESET_ALL)
+        print(Fore.RED + f"[ERROR] URL Error {e.reason} while downloading {url}")
+
+def install_package(package):
+    """Install a Python package using pip."""
+    try:
+        print(Fore.YELLOW + f"[INFO] Installing {package}...")
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+        print(Fore.GREEN + f"[SUCCESS] Installed {package}.")
+    except subprocess.CalledProcessError:
+        print(Fore.RED + f"[ERROR] Failed to install {package}.")
 
 def install_packages():
-    """Install required Python packages using pip."""
+    """Install required Python packages."""
     required_packages = [
         'subprocess', 'threading', 'time', 'logging', 'datetime', 'scapy', 
         'flask', 'playsound', 'requests', 'numpy'
     ]
-    
     for package in required_packages:
-        try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-            print(Fore.GREEN + f"[SUCCESS] Installed {package}." + Style.RESET_ALL)
-        except subprocess.CalledProcessError:
-            print(Fore.RED + f"[ERROR] Failed to install {package}." + Style.RESET_ALL)
+        install_package(package)
 
 def open_terminal_windows():
     """Open terminal windows with different commands."""
@@ -59,12 +77,13 @@ def open_terminal_windows():
     
     # Open terminal windows with the commands
     for command in commands:
+        print(Fore.YELLOW + f"[INFO] Opening terminal for: {command}")
         subprocess.Popen(['xterm', '-hold', '-e', f'sh -c "{command}"'])
         time.sleep(1)  # Delay to ensure each terminal opens correctly
 
 def main():
     print_banner()
-    
+
     base_dir = '/home/kali/Desktop/Python/yubx_protect'
     create_dir_if_missing(base_dir)
 
@@ -82,10 +101,10 @@ def main():
         dest_path = os.path.join(base_dir, filename)
         download_file(url, dest_path)
 
-    print(Fore.MAGENTA + "[INFO] Installing required packages..." + Style.RESET_ALL)
+    print(Fore.MAGENTA + "[INFO] Installing required packages...")
     install_packages()
 
-    print(Fore.MAGENTA + "[INFO] Opening terminal windows with specified commands..." + Style.RESET_ALL)
+    print(Fore.MAGENTA + "[INFO] Opening terminal windows with specified commands...")
     open_terminal_windows()
 
 if __name__ == '__main__':
