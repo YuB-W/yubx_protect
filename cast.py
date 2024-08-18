@@ -3,6 +3,7 @@ import pychromecast
 import logging
 import json
 import os
+import time  # Import time module for sleep
 
 # Configure logging
 logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,7 +27,7 @@ app = Flask(__name__)
 
 # Read HTML content from file
 with open('/home/kali/Desktop/Python/yubx_protect/index.html', 'r') as file:
-    MAP_HTML = file.read()
+    HTML_CONTENT = file.read()
 
 def discover_chromecast_devices(timeout=5):
     """Discover Chromecast devices with a specified timeout."""
@@ -41,7 +42,8 @@ def discover_chromecast_devices(timeout=5):
 @app.route('/')
 def index():
     """Render the main page with HTML content."""
-    return render_template_string(MAP_HTML)
+    chromecasts = discover_chromecast_devices()
+    return render_template_string(HTML_CONTENT, chromecasts=chromecasts)
 
 @app.route('/cast_media', methods=['POST'])
 def cast_media():
