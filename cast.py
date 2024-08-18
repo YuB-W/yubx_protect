@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template_string, request
 import pychromecast
 import logging
 import threading
@@ -27,9 +27,15 @@ def get_device(name):
             return device
     return None
 
+# Define the path to your HTML template
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'index.html')
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Load the template from the same directory
+    with open(TEMPLATE_PATH) as f:
+        template = f.read()
+    return render_template_string(template)
 
 @app.route('/discover_devices', methods=['GET'])
 def discover_devices():
