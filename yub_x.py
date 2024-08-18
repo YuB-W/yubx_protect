@@ -1,10 +1,11 @@
 import os
 import sys
 import subprocess
+import time
 import urllib.request
 from urllib.error import HTTPError, URLError
 from colorama import Fore, Style, init
-import time
+import logging
 
 # Initialize colorama for colorful terminal output
 init(autoreset=True)
@@ -45,20 +46,31 @@ def download_file(url, dest):
     except URLError as e:
         print(Fore.RED + f"[ERROR] URL Error {e.reason} while downloading {url}")
 
-def install_package(package):
-    """Install a Python package using pip."""
+def is_package_installed(package):
+    """Check if a Python package is installed."""
     try:
-        print(Fore.YELLOW + f"[INFO] Installing {package}...")
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-        print(Fore.GREEN + f"[SUCCESS] Installed {package}.")
+        subprocess.check_call([sys.executable, '-c', f'import {package}'])
+        return True
     except subprocess.CalledProcessError:
-        print(Fore.RED + f"[ERROR] Failed to install {package}.")
+        return False
+
+def install_package(package):
+    """Install a Python package using pip with sudo."""
+    if not is_package_installed(package):
+        try:
+            print(Fore.YELLOW + f"[INFO] Installing {package}...")
+            subprocess.check_call(['sudo', 'pip3', 'install', package])
+            print(Fore.GREEN + f"[SUCCESS] Installed {package}.")
+        except subprocess.CalledProcessError:
+            print(Fore.RED + f"[ERROR] Failed to install {package}.")
+    else:
+        print(Fore.CYAN + f"[INFO] {package} is already installed.")
 
 def install_packages():
     """Install required Python packages."""
     required_packages = [
-        'subprocess', 'threading', 'time', 'logging', 'datetime', 'scapy', 
-        'flask', 'playsound', 'requests', 'numpy'
+        'flask', 'scapy', 'playsound', 'requests', 'numpy',
+        'pychromecast', 'logging'
     ]
     for package in required_packages:
         install_package(package)
