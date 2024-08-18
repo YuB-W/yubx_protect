@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wi-Fi Monitoring System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+     <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #0f0;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .leaflet-popup-content {
+            color: #000;
+            background-color: #0f0;
+        }
+        .leaflet-popup-content-wrapper {
+            background: #0f0;
+        }
+        .leaflet-popup-tip {
+            background: #0f0;
+        }
+        .leaflet-control-zoom {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #0f0;
+        }
+        .leaflet-control-attribution {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #0f0;
+        }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0a0a0a;
+            color: #00ff00;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #map {
+            height: 60vh;
+            width: 100%;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+            margin: 10px 0;
+        }
+        #controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #1a1a1a;
+            border-bottom: 2px solid #00ff00;
+        }
+        #controls button {
+            background-color: #333;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        #controls button:hover {
+            background-color: #555;
+            transform: scale(1.05);
+        }
+        #controls button:active {
+            transform: scale(0.95);
+        }
+        #logs {
+            background-color: #1a1a1a;
+            color: #00ff00;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            border: 1px solid #00ff00;
+            max-height: 20vh;
+            overflow-y: auto;
+        }
+        .alert {
+            padding: 8px;
+            margin: 8px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            background-color: #ff0000;
+            color: #000000;
+            
+            display: none; /* Initially hidden */
+        }
+        .alert.success {
+            background-color: #00ff00;
+            color: #000000;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button onclick="startSniffing()">Start Protection</button>
+        <button onclick="stopSniffing()">Stop Protection</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <button onclick="protectWiFi()">Protect</button>
+        <button onclick="autoProtect()">Auto Protect</button>
+        <button onclick="fetchAlerts()">Zoom To Alert</button>
+    </div>
+    <div id="map"></div>
+    <div id="logs"></div>
+    <div id="alert" class="alert"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([32.05665727536159, 34.758242349151836], 0);
+        L.esri.basemapLayer('Imagery').addTo(map);
+
+        // Define the target icon
+        const targetIcon = L.icon({
+            iconUrl: 'https://github.com/YuB-W/files/blob/main/ta2.png', // Replace with the URL to your target icon
+            iconSize: [162, 162], // Size of the icon
+            iconAnchor: [76, 70], // Anchor point of the icon
+            popupAnchor: [0, -32] // Popup position
+        });
+
+        let targetMarker;
+
+     
+        // Function to zoom to a target location with animation
+        function zoomToTarget(info) {
+            map.flyTo([32.05665727536159, 34.758242349151836], 18, {
+                duration: 1, // Duration of the zoom animation in seconds
+                animate: true
+            });
+
+            if (targetMarker) {
+                targetMarker.remove(); // Remove existing target marker
+            }
+
+            // Add target marker to map
+            targetMarker = L.marker([32.05665727536159, 34.758242349151836], { icon: targetIcon }).addTo(map);
+            targetMarker.bindPopup(`
+                <div style="font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000000; background-color: #00ff00; border: 1px solid #000000; padding: 10px; border-radius: 6px; box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.3);">
+                    <strong style="color: #000000; font-size: 16px; text-shadow: 0 0 5px #00ff00;">Target Detected!</strong><br>
+                    <div style="margin-top: 8px; font-size: 12px;">
+                        <em style="color: #000000; text-shadow: 0 0 5px #00ff00;">INFO:</em><br>
+                        <span style="color: #000000;"><strong>${info}</strong></span><br>
+                    </div>
+                </div>
+            `).openPopup();
+
+            targetMarker._icon.classList.add('bounce');
+        }
+
+        function zoomToMap() {
+            map.flyTo([32.05665727536159, 34.758242349151836], 12, {
+                duration: 1, // Duration of the zoom animation in seconds
+                animate: true
+            });
+        }
+        zoomToMap();
+        // Function to handle alert updates with animations
+        function updateAlert() {
+            fetch('/current_alert')
+                .then(response => response.json())
+                .then(data => {
+                    const alertDiv = document.getElementById('alert');
+                    if (data.alert) {
+                        zoomToTarget(data.alert.message);
+                        showAlert(data.alert.message, data.alert.type);
+                        setTimeout(() => {
+                            //zoomToMap();
+                          //  if (targetMarker) {
+                           //     targetMarker.remove(); // Remove the marker when zooming out
+                           // }
+                        }, 10000); // Zoom back after 8 seconds
+                    } else {
+                        hideAlert(); // Hide alert if no attack is detected
+                        //if (targetMarker) {
+                       //     targetMarker.remove(); // Remove the marker if no alert
+                       // }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('The System Is Offline!');
+                });
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertDiv = document.getElementById('alert');
+            alertDiv.textContent = message;
+            alertDiv.className = `alert ${type}`; 
+            alertDiv.style.display = 'block'; // Show the alert
+            setTimeout(() => alertDiv.style.display = 'none', 5000); // Hide after 5 seconds
+        }
+
+        function hideAlert() {
+            const alertDiv = document.getElementById('alert');
+            alertDiv.style.display = 'none'; // Hide the alert if no attack
+        }
+
+        function startSniffing() {
+            fetch('/start_sniffing', { method: 'POST', body: new URLSearchParams({ iface: 'wlan0' }) })
+                .then(response => response.json())
+                .then(data => {
+                    showAlert('Protection Started!.', 'success');
+                    console.log(data);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function stopSniffing() {
+            fetch('/stop_sniffing', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    showAlert('Sniffing stopped');
+                    console.log(data);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function clearLogs() {
+            fetch('/clear_logs', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('logs').innerHTML = '';
+                        showAlert('Logs cleared', 'success');
+                    } else {
+                        showAlert('The System is Offline');
+                    }
+                    console.log(data);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function protectWiFi() {
+            fetch('/protect_wifi', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'protected') {
+                        showAlert('Wi-Fi protected', 'success');
+                    } else {
+                        showAlert('No attack detected');
+                    }
+                    console.log(data);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function autoProtect() {
+            fetch('/auto_protect', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'auto_protected') {
+                        showAlert('Auto-protection activated', 'success');
+                    } else {
+                        showAlert('Protection stopped!');
+                    }
+                    console.log(data);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        function updateLogs() {
+            fetch('/logs')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.logs) {
+                        const logsContainer = document.getElementById('logs');
+                        logsContainer.innerHTML = data.logs.slice(-15).join('<br>');
+                    } else {
+                        document.getElementById('logs').innerHTML = 'No logs available';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('The System is Offline');
+                });
+            }
+    
+    
+            const cityCoordinates = {};
+            const alertMarkers = {};  // Store markers keyed by city name
+
+            async function displayAlerts(alerts) {
+                if (!alerts.length) return;
+
+                // Variable to store the coordinates and marker of the first alert
+                let firstAlertCoords = null;
+                let firstAlertMarker = null;
+
+                // Process and display each alert
+                for (const alert of alerts) {
+                    const city = alert.data;
+
+                    // Check if the city's coordinates are already cached
+                    let coords = cityCoordinates[city];
+                    if (!coords) {
+                        // Fetch coordinates and cache them
+                        coords = await fetchCoordinates(city);
+                        if (coords) {
+                            cityCoordinates[city] = coords;
+                        } else {
+                            coords = [32.0853, 34.7818]; // Fallback to Tel Aviv
+                        }
+                    }
+
+                    // Create or update the marker for this alert
+                    if (!alertMarkers[city]) {
+                        alertMarkers[city] = L.marker(coords).addTo(map);
+                    }
+
+                    // Set the first alert's coordinates and marker if not already set
+                    if (!firstAlertCoords) {
+                        firstAlertCoords = coords;
+                        firstAlertMarker = alertMarkers[city];
+                    }
+
+                    // Format alert date
+                    const alertDate = new Date(alert.alertDate).toLocaleString();
+
+                    // Bind the popup to the marker
+                    alertMarkers[city].bindPopup(`<b>${alert.title}</b><br>${alert.data}<br><small>${alertDate}</small>`);
+                }
+
+                // Smoothly zoom to the location of the first alert or a default view
+                if (firstAlertCoords && firstAlertMarker) {
+                    map.flyTo(firstAlertCoords, 16, {
+                        animate: true,
+                        duration: 4.5,  // Duration of the zoom animation
+                    });
+
+                    // Open the popup once the zoom is complete
+                    map.once('moveend', () => {
+                        firstAlertMarker.openPopup();
+                    });
+                } else {
+                    map.flyTo([32.0853, 34.7818], 14, { animate: true });
+                }
+            }
+
+            // Function to fetch coordinates for a city using OpenStreetMap's Nominatim service
+            async function fetchCoordinates(cityName) {
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)},Israel&format=json&limit=1`;
+
+                try {
+                    const response = await fetch(geocodeUrl);
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                    } else {
+                        console.error(`Coordinates not found for city: ${cityName}`);
+                        return null;
+                    }
+                } catch (error) {
+                    console.error(`Error fetching coordinates for city: ${cityName}`, error);
+                    return null;
+                }
+            }
+
+            // Function to fetch alerts from the server
+            async function fetchAlerts() {
+                try {
+                    let response = await fetch('/alerts');
+                    let alerts = await response.json();
+                    displayAlerts(alerts);
+                } catch (error) {
+                    console.error('Error fetching alerts:', error);
+                }
+            }
+
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+        function initialize() {
+           
+            setTimeout(() => {
+                fetchAlerts();
+                updateLogs();
+                updateAlert();
+                zoomToMap();
+            }, 2000);
+
+            // Set intervals for periodic tasks
+            setInterval(fetchAlerts, 13000);  // Fetch alerts every 11 seconds
+            setInterval(updateLogs, 1000);    // Update logs every second
+            setInterval(updateAlert, 5000);   // Update alerts every 5 seconds
+            }
+
+            initialize();
+        });
+
+    </script>
+</body>
+</html>
