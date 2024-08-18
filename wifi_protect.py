@@ -409,7 +409,7 @@ def main():
             if new_data is not None:
                 if update_alert_data(file_path, new_data):
                     logger.info("[+] Detected new alerts")
-                    threading.Thread(target=playsound, args=('/home/kali/Desktop/yubx_protect/Python/alert_r.m4a',)).start()
+                    threading.Thread(target=playsound, args=('/home/kali/Desktop/Python/yubx_protect/alert_r.m4a',)).start()
             time.sleep(delay_seconds)
     
     fetch_thread = Thread(target=data_fetcher, daemon=True)
