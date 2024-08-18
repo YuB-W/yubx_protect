@@ -3,58 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chromecast Controller</title>
+    <title>Quantum Cast Control</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
-            background-color: #121212;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
             color: #e0e0e0;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
         header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
         h1 {
-            color: #ff5722;
+            color: #00ff99;
+            font-size: 3rem;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        h2 {
+            color: #ff007f;
+            font-size: 2rem;
+            margin-bottom: 20px;
         }
         .controls, .status {
             margin: 20px 0;
         }
         input[type="text"], input[type="number"] {
-            width: calc(100% - 20px);
-            padding: 10px;
-            margin: 5px 0;
-            border: 1px solid #333;
-            border-radius: 5px;
-            background-color: #1e1e1e;
+            width: calc(100% - 22px);
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
             color: #e0e0e0;
+            font-size: 16px;
         }
         button {
-            background-color: #ff5722;
+            background-color: #ff007f;
             color: #fff;
             border: none;
             padding: 15px;
-            margin: 5px;
+            margin: 10px 5px;
             cursor: pointer;
-            border-radius: 5px;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
+            border-radius: 8px;
+            font-size: 18px;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
         button:hover {
-            background-color: #e64a19;
+            background-color: #cc007a;
+            transform: translateY(-2px);
+        }
+        button:active {
+            background-color: #b30066;
+            transform: translateY(0);
         }
         .status {
             text-align: center;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
+            margin: 20px 0;
         }
         .device-list {
             display: flex;
@@ -62,67 +78,66 @@
             align-items: flex-start;
         }
         .device-list label {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #222;
+            transition: background-color 0.3s;
+        }
+        .device-list label:hover {
+            background-color: #333;
         }
         .device-list input[type="checkbox"] {
-            margin-right: 10px;
-        }
-        .device-list .device-item {
-            padding: 10px;
-            border: 1px solid #333;
-            border-radius: 5px;
-            background-color: #1e1e1e;
-            margin-bottom: 10px;
-            transition: background-color 0.3s ease;
-        }
-        .device-list .device-item:hover {
-            background-color: #333;
+            margin-right: 15px;
         }
         footer {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 30px;
             font-size: 14px;
-            color: #777;
+            color: #888;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-tv"></i> Chromecast Controller</h1>
+            <h1><i class="fas fa-rocket"></i> Quantum Cast Control</h1>
         </header>
 
         <div class="controls">
             <div class="device-list">
-                <h2>Select Devices</h2>
+                <h2>Available Devices</h2>
                 <!-- Dynamically populate device list with Flask -->
                 {% for device in chromecasts %}
-                <label class="device-item">
+                <label>
                     <input type="checkbox" name="device_ids" value="{{ loop.index0 }}">
                     {{ device.name }}
                 </label>
                 {% endfor %}
             </div>
 
-            <input type="text" id="media-url" placeholder="Media URL">
-            <input type="text" id="media-type" placeholder="Media Type">
-            <input type="number" id="duration" placeholder="Duration (seconds)">
-            <input type="number" id="volume-level" placeholder="Volume Level (0.0 to 1.0)" step="0.1" min="0" max="1">
+            <input type="text" id="media-url" placeholder="Enter Media URL">
+            <input type="text" id="media-type" placeholder="Enter Media Type">
+            <input type="number" id="duration" placeholder="Enter Duration (seconds)">
+            <input type="number" id="volume-level" placeholder="Enter Volume Level (0.0 to 1.0)" step="0.1" min="0" max="1">
             
-            <button data-action="cast_media">Cast Media</button>
-            <button data-action="shutdown">Shutdown</button>
-            <button data-action="turn_on">Turn On</button>
-            <button data-action="set_volume">Set Volume</button>
-            <button data-action="mute">Mute</button>
-            <button data-action="unmute">Unmute</button>
+            <button data-action="cast_media">Start Casting</button>
+            <button data-action="shutdown">Shutdown Devices</button>
+            <button data-action="turn_on">Power On</button>
+            <button data-action="set_volume">Adjust Volume</button>
+            <button data-action="mute">Mute Devices</button>
+            <button data-action="unmute">Unmute Devices</button>
         </div>
 
         <div class="status"></div>
     </div>
 
     <footer>
-        &copy; 2024 Chromecast Controller. All rights reserved.
+        &copy; 2024 Quantum Cast Control. All rights reserved.
     </footer>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
