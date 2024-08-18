@@ -21,7 +21,7 @@ def print_banner():
           ╚██████╔╝╚██████╔╝██║     
            ╚═════╝  ╚═════╝ ╚═╝     
     ====================================
-               YuB-X Protect V1
+               YuB-X Protect
     ====================================
     """
     print(Fore.GREEN + banner)
@@ -107,6 +107,9 @@ def main():
         "fix_wlan.py": "https://github.com/YuB-W/yubx_protect/raw/main/fix_wlan.py",
         "cast.py": "https://github.com/YuB-W/yubx_protect/raw/main/cast.py",
         "index.html": "https://github.com/YuB-W/yubx_protect/raw/main/index.html",
+        "detect.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/detect.m4a",
+        "welcome.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/welcome.m4a",
+        "dalert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/dalert_r.m4a"
     }
 
     for filename, url in files.items():
