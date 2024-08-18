@@ -4,39 +4,53 @@
     <title>Chromecast Controller</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #1e1e1e;
+            color: #00ff00;
             margin: 0;
             padding: 0;
             text-align: center;
         }
         h1 {
-            color: #333;
+            color: #00ff00;
+            margin-top: 20px;
+            margin-bottom: 20px;
         }
         .device-list {
             margin: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .device-item {
-            background-color: #fff;
-            border: 1px solid #ddd;
+            background-color: #333;
+            border: 1px solid #00ff00;
             border-radius: 5px;
             padding: 10px;
             margin: 5px;
-            display: inline-block;
-            width: 200px;
+            width: 220px;
             text-align: left;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        .device-item h2 {
+            color: #00ff00;
+            margin: 0;
         }
         button {
             margin: 5px;
             padding: 10px;
             border: none;
             border-radius: 5px;
-            background-color: #007bff;
-            color: #fff;
+            background-color: #007700;
+            color: #00ff00;
             cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
         }
         button:hover {
-            background-color: #0056b3;
+            background-color: #005500;
+        }
+        button:active {
+            background-color: #003300;
         }
     </style>
 </head>
