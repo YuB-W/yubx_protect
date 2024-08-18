@@ -6,189 +6,230 @@
     <title>YuB-X Cyber Command Center</title>
     <style>
         body {
+            background-color: #1a1a1a;
+            color: #ffffff;
             font-family: Arial, sans-serif;
-            background-color: #111;
-            color: #0f0;
-            margin: 0;
-            padding: 0;
         }
-
-        header {
-            background-color: #222;
-            padding: 10px;
-            text-align: center;
-            color: #0f0;
-        }
-
-        main {
+        .container {
+            max-width: 800px;
+            margin: auto;
             padding: 20px;
         }
-
-        section {
+        h1, h2 {
+            text-align: center;
+            color: #00ccff;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: none;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #00ccff;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0099cc;
+        }
+        .select-device {
             margin-bottom: 20px;
         }
-
-        button {
-            background-color: #c00;
-            color: #fff;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            margin: 5px;
-        }
-
-        button:hover {
-            background-color: #f00;
-        }
-
-        input, select {
-            padding: 5px;
-            margin: 5px;
-            background-color: #222;
-            color: #0f0;
-            border: 1px solid #0f0;
-        }
-
-        h1, h2 {
-            color: #0f0;
-        }
-
-        pre {
-            background-color: #333;
-            padding: 10px;
-            border: 1px solid #0f0;
+        .action-button {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <header>
+    <div class="container">
         <h1>YuB-X Cyber Command Center</h1>
-    </header>
-    <main>
-        <section>
-            <h2>Available Devices</h2>
-            <button onclick="discoverDevices()">Discover Devices</button>
-            <pre id="deviceList"></pre>
-        </section>
-        <section>
-            <h2>Cast Text</h2>
-            <input type="text" id="textMessage" placeholder="Text message">
-            <input type="text" id="deviceNameText" placeholder="Device name">
-            <label>
-                <input type="checkbox" id="animationCheckbox"> Animation
-            </label>
-            <button onclick="castText()">Cast Text</button>
-        </section>
-        <section>
-            <h2>Cast Media</h2>
-            <input type="text" id="mediaUrl" placeholder="Enter Media URL">
-            <input type="text" id="mediaType" placeholder="Enter Media Type">
-            <input type="number" id="duration" placeholder="Enter Duration (seconds)">
-            <input type="text" id="deviceNameMedia" placeholder="Device name">
-            <button onclick="castMedia()">Cast Media</button>
-        </section>
-        <section>
-            <h2>Device Control</h2>
-            <button onclick="shutdownDevices()">Shutdown Devices</button>
-            <button onclick="turnOnDevices()">Turn On</button>
-            <button onclick="setVolume()">Set Volume</button>
-            <button onclick="muteDevices()">Mute</button>
-            <button onclick="unmuteDevices()">Unmute</button>
-        </section>
-    </main>
+        <h2>Available Devices</h2>
+
+        <div id="device-list"></div>
+
+        <button onclick="discoverDevices()">Discover Devices</button>
+
+        <div class="select-device">
+            <label for="device-select">Select Device</label>
+            <select id="device-select">
+                <!-- Dynamically populated -->
+            </select>
+        </div>
+
+        <h2>Cast Text</h2>
+        <label for="text-message">Text message</label>
+        <input type="text" id="text-message" placeholder="Enter text to cast">
+        <label for="animation">Animation</label>
+        <input type="text" id="animation" placeholder="Enter animation type">
+        <button onclick="castText()">Cast Text</button>
+
+        <h2>Cast Media</h2>
+        <label for="media-url">Enter Media URL</label>
+        <input type="text" id="media-url" placeholder="Enter media URL">
+        <label for="media-type">Enter Media Type</label>
+        <input type="text" id="media-type" placeholder="Enter media type">
+        <label for="duration">Enter Duration (seconds)</label>
+        <input type="number" id="duration" placeholder="Enter duration">
+        <button onclick="castMedia()">Cast Media</button>
+
+        <h2>Device Control</h2>
+        <button onclick="shutdownDevice()">Shutdown Device</button>
+        <button onclick="turnOnDevice()">Turn On</button>
+        <label for="volume-level">Set Volume</label>
+        <input type="number" id="volume-level" placeholder="Enter volume level (0.0 to 1.0)">
+        <button onclick="setVolume()">Set Volume</button>
+        <button onclick="muteDevice()">Mute</button>
+        <button onclick="unmuteDevice()">Unmute</button>
+    </div>
+
     <script>
         function discoverDevices() {
             fetch('/discover_devices')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('deviceList').textContent = JSON.stringify(data, null, 2);
-                })
-                .catch(error => console.error('Error discovering devices:', error));
+                    const deviceSelect = document.getElementById('device-select');
+                    deviceSelect.innerHTML = '';
+
+                    data.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.name;
+                        option.textContent = device.name;
+                        deviceSelect.appendChild(option);
+                    });
+
+                    const deviceList = document.getElementById('device-list');
+                    deviceList.innerHTML = JSON.stringify(data, null, 2);
+                });
         }
 
         function castText() {
-            const textMessage = document.getElementById('textMessage').value;
-            const deviceName = document.getElementById('deviceNameText').value;
-            const animation = document.getElementById('animationCheckbox').checked;
+            const textMessage = document.getElementById('text-message').value;
+            const animation = document.getElementById('animation').value;
+            const deviceName = document.getElementById('device-select').value;
 
             fetch('/cast_text', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({text_message: textMessage, device_name: deviceName, animation: animation})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text_message: textMessage,
+                    animation: animation,
+                    device_name: deviceName
+                })
             })
             .then(response => response.json())
-            .then(data => {
-                alert(data.status === 'success' ? 'Text message cast successfully!' : 'Failed to cast text message.');
-            })
-            .catch(error => console.error('Error casting text:', error));
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
         }
 
         function castMedia() {
-            const mediaUrl = document.getElementById('mediaUrl').value;
-            const mediaType = document.getElementById('mediaType').value;
+            const mediaUrl = document.getElementById('media-url').value;
+            const mediaType = document.getElementById('media-type').value;
             const duration = document.getElementById('duration').value;
-            const deviceName = document.getElementById('deviceNameMedia').value;
+            const deviceName = document.getElementById('device-select').value;
 
             fetch('/cast_media', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({media_url: mediaUrl, media_type: mediaType, duration: duration, device_name: deviceName})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    media_url: mediaUrl,
+                    media_type: mediaType,
+                    duration: duration,
+                    device_name: deviceName
+                })
             })
             .then(response => response.json())
-            .then(data => {
-                alert(data.status === 'success' ? 'Media cast successfully!' : 'Failed to cast media.');
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
+        }
+
+        function shutdownDevice() {
+            const deviceName = document.getElementById('device-select').value;
+
+            fetch('/shutdown_device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_name: deviceName
+                })
             })
-            .catch(error => console.error('Error casting media:', error));
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
         }
 
-        function shutdownDevices() {
-            fetch('/shutdown_devices', {method: 'POST'})
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.status === 'success' ? 'Devices shut down successfully!' : 'Failed to shut down devices.');
-                })
-                .catch(error => console.error('Error shutting down devices:', error));
-        }
+        function turnOnDevice() {
+            const deviceName = document.getElementById('device-select').value;
 
-        function turnOnDevices() {
-            fetch('/turn_on_devices', {method: 'POST'})
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.status === 'success' ? 'Devices turned on successfully!' : 'Failed to turn on devices.');
+            fetch('/turn_on_device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_name: deviceName
                 })
-                .catch(error => console.error('Error turning on devices:', error));
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
         }
 
         function setVolume() {
-            const volume = prompt('Enter volume (0-100):');
+            const volumeLevel = document.getElementById('volume-level').value;
+            const deviceName = document.getElementById('device-select').value;
+
             fetch('/set_volume', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({volume: volume})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    volume_level: volumeLevel,
+                    device_name: deviceName
+                })
             })
             .then(response => response.json())
-            .then(data => {
-                alert(data.status === 'success' ? 'Volume set successfully!' : 'Failed to set volume.');
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
+        }
+
+        function muteDevice() {
+            const deviceName = document.getElementById('device-select').value;
+
+            fetch('/mute_device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_name: deviceName
+                })
             })
-            .catch(error => console.error('Error setting volume:', error));
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
         }
 
-        function muteDevices() {
-            fetch('/mute_devices', {method: 'POST'})
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.status === 'success' ? 'Devices muted successfully!' : 'Failed to mute devices.');
-                })
-                .catch(error => console.error('Error muting devices:', error));
-        }
+        function unmuteDevice() {
+            const deviceName = document.getElementById('device-select').value;
 
-        function unmuteDevices() {
-            fetch('/unmute_devices', {method: 'POST'})
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.status === 'success' ? 'Devices unmuted successfully!' : 'Failed to unmute devices.');
+            fetch('/unmute_device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_name: deviceName
                 })
-                .catch(error => console.error('Error unmuting devices:', error));
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
         }
     </script>
 </body>
