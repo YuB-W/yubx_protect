@@ -10,6 +10,8 @@
             background-color: #000;
             color: #0f0;
             text-align: center;
+            margin: 0;
+            padding: 0;
         }
         .container {
             width: 80%;
@@ -18,22 +20,26 @@
         }
         h1 {
             color: #0f0;
-            font-size: 2em;
+            font-size: 2.5em;
+            margin-bottom: 20px;
         }
         .device-list {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            margin-bottom: 20px;
+            gap: 20px;
         }
         .device {
             background-color: #111;
             border: 2px solid #0f0;
             border-radius: 10px;
             padding: 15px;
-            margin: 10px;
-            width: 250px;
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            width: 300px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+            transition: transform 0.3s;
+        }
+        .device:hover {
+            transform: scale(1.05);
         }
         .device h2 {
             margin: 0;
@@ -48,9 +54,38 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 1em;
+            transition: background-color 0.3s, transform 0.3s;
         }
         .device button:hover {
             background-color: #0c0;
+            transform: translateY(-2px);
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        .controls button {
+            background-color: #0f0;
+            border: none;
+            color: #000;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .controls button:hover {
+            background-color: #0c0;
+            transform: translateY(-2px);
+        }
+        .controls select, .controls input {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            background-color: #111;
+            color: #0f0;
+            font-size: 1em;
         }
     </style>
 </head>
@@ -69,6 +104,18 @@
                     <button onclick="unmuteDevice('{{ loop.index0 }}')">Unmute</button>
                 </div>
             {% endfor %}
+        </div>
+        <div class="controls">
+            <h2>Additional Controls</h2>
+            <select id="themeSelector">
+                <option value="default">Select Theme</option>
+                <option value="dark">Dark Mode</option>
+                <option value="light">Light Mode</option>
+            </select>
+            <input type="text" id="mediaUrl" placeholder="Enter media URL" />
+            <input type="text" id="mediaType" placeholder="Enter media type" />
+            <input type="number" id="volumeLevel" placeholder="Enter volume level (0.0 to 1.0)" step="0.1" min="0" max="1" />
+            <button onclick="applyControls()">Apply Controls</button>
         </div>
     </div>
     <script>
@@ -124,6 +171,29 @@
 
         function unmuteDevice(deviceId) {
             sendRequest('/unmute', { device_ids: [deviceId] });
+        }
+
+        function applyControls() {
+            const theme = document.getElementById('themeSelector').value;
+            const mediaUrl = document.getElementById('mediaUrl').value;
+            const mediaType = document.getElementById('mediaType').value;
+            const volumeLevel = document.getElementById('volumeLevel').value;
+            if (theme !== 'default') {
+                document.body.className = theme;
+            }
+            if (mediaUrl && mediaType) {
+                sendRequest('/cast_media', {
+                    device_ids: Array.from(document.querySelectorAll('.device')).map((_, i) => i),
+                    media_url: mediaUrl,
+                    media_type: mediaType
+                });
+            }
+            if (volumeLevel) {
+                sendRequest('/set_volume', {
+                    device_ids: Array.from(document.querySelectorAll('.device')).map((_, i) => i),
+                    volume_level: parseFloat(volumeLevel)
+                });
+            }
         }
     </script>
 </body>
