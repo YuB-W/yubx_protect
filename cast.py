@@ -3,7 +3,6 @@ import pychromecast
 import logging
 import json
 import os
-import time
 import socket
 
 # Configure logging
@@ -91,7 +90,6 @@ def cast_media():
 
             if duration:
                 logging.info(f"Waiting for {duration} seconds...")
-                time.sleep(duration)
                 mc.stop()
 
             logging.info(f"Media casting started on {device.name}.")
