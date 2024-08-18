@@ -2,15 +2,13 @@ from flask import Flask, request, jsonify, send_file
 import pychromecast
 import logging
 import threading
-from datetime import datetime
-from termcolor import colored
+import socket
 
 # Configure logging
 logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 
-# Function to discover Chromecast devices
 def discover_chromecast_devices(timeout=5):
     """Discover Chromecast devices with a specified timeout."""
     logging.info("Discovering Chromecast devices...")
@@ -33,7 +31,7 @@ def get_device(name):
 def index():
     return send_file('index.html')
 
-@app.route('/discover_devices')
+@app.route('/discover_devices', methods=['GET'])
 def discover_devices():
     devices = discover_chromecast_devices()
     device_list = [{"name": cast.name} for cast in devices]
@@ -180,13 +178,12 @@ def shutdown_all_devices():
     data = request.json
     device_names = data.get('device_names')
 
-    devices = [get_device(name) for name in device_names]
+    devices = [get_device(name) for name in device_names if get_device(name)]
     threads = []
     for device in devices:
-        if device:
-            thread = threading.Thread(target=shutdown_device, args=(device,))
-            threads.append(thread)
-            thread.start()
+        thread = threading.Thread(target=shutdown_device, args=(device,))
+        threads.append(thread)
+        thread.start()
     for thread in threads:
         thread.join()
     return jsonify({"status": "success", "message": "Shutdown commands sent to all devices."})
