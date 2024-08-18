@@ -1,18 +1,45 @@
-import subprocess
+import os
 import time
+import subprocess
 
-def open_terminal_windows():
-    """Open four terminal windows with different commands."""
-    commands = [
-        '/usr/bin/mousepad /home/kali/Desktop/Python/website.html',  # Open website.html in Mousepad
-        '/usr/bin/wifite',  # Run wifite
-        'ls',  # List directory contents
-        'sudo python3 /home/kali/Desktop/Python/fix_wlan.py'  # Run the Python script
-    ]
-    
-    for command in commands:
-        subprocess.Popen(['xterm', '-e', command])
-        time.sleep(1)  # Delay to ensure each terminal opens correctly
+# Function to prevent sleep using `xset` (graphical environments)
+def prevent_sleep_xset():
+    try:
+        # Disable screen saver and power management
+        subprocess.run(['xset', 's', 'off'], check=True)
+        subprocess.run(['xset', '-dpms'], check=True)
+        print("Screen saver and DPMS (Display Power Management Signaling) disabled.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to execute xset commands: {e}")
 
-if __name__ == '__main__':
-    open_terminal_windows()
+# Function to prevent sleep using `systemd-logind` configuration
+def prevent_sleep_logind():
+    try:
+        with open('/etc/systemd/logind.conf', 'a') as f:
+            f.write('\nHandleSuspendKey=ignore\n')
+            f.write('HandleHibernateKey=ignore\n')
+            f.write('HandleLidSwitch=ignore\n')
+            f.write('HandleLidSwitchDocked=ignore\n')
+        # Restart systemd-logind to apply changes
+        subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-logind'], check=True)
+        print("Systemd-logind configuration updated and service restarted.")
+    except Exception as e:
+        print(f"Failed to modify logind.conf or restart service: {e}")
+
+# Function to run a dummy loop to keep the system awake
+def prevent_sleep_loop():
+    try:
+        while True:
+            time.sleep(60)  # Sleep for 60 seconds before looping again
+    except KeyboardInterrupt:
+        print("Script terminated by user.")
+
+# Main function
+def main():
+    prevent_sleep_xset()
+    prevent_sleep_logind()
+    print("System sleep prevention methods activated.")
+    prevent_sleep_loop()
+
+if __name__ == "__main__":
+    main()
