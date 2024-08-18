@@ -2,14 +2,16 @@ import os
 import subprocess
 import time
 import urllib.request
+from urllib.error import HTTPError, URLError
 from colorama import Fore, Style, init
 
+# Initialize colorama
 init()
 
 def print_banner():
     """Print a cool cyber-style YuB-X banner."""
     banner = """
-	YuB-X Protect
+    YuB-X Protect
     """
     print(Fore.GREEN + banner + Style.RESET_ALL)
 
@@ -22,9 +24,14 @@ def create_dir_if_missing(path):
 def download_file(url, dest):
     """Download a file if it doesn't exist locally."""
     if not os.path.exists(dest):
-        print(Fore.YELLOW + f"[INFO] File {dest} is missing. Downloading from GitHub..." + Style.RESET_ALL)
-        urllib.request.urlretrieve(url, dest)
-        print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}." + Style.RESET_ALL)
+        try:
+            print(Fore.YELLOW + f"[INFO] File {dest} is missing. Downloading from GitHub..." + Style.RESET_ALL)
+            urllib.request.urlretrieve(url, dest)
+            print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}." + Style.RESET_ALL)
+        except HTTPError as e:
+            print(Fore.RED + f"[ERROR] HTTP Error: {e.code} when trying to download {url}" + Style.RESET_ALL)
+        except URLError as e:
+            print(Fore.RED + f"[ERROR] URL Error: {e.reason} when trying to download {url}" + Style.RESET_ALL)
 
 def open_terminal_windows():
     """Open terminal windows with different commands."""
@@ -41,7 +48,7 @@ def open_terminal_windows():
     # Open terminal windows with the commands
     for command in commands:
         subprocess.Popen(['xterm', '-hold', '-e', f'sh -c "{command}"'])
-        time.sleep(1)  
+        time.sleep(1)  # Delay to ensure each terminal opens correctly
 
 def main():
     print_banner()
@@ -49,6 +56,7 @@ def main():
     base_dir = '/home/kali/Desktop/Python/yubx_protect'
     create_dir_if_missing(base_dir)
 
+    # Files to download from GitHub
     files = {
         "website.html": "https://github.com/YuB-W/yubx_protect/raw/main/website.html",
         "wifi_protect.py": "https://github.com/YuB-W/yubx_protect/raw/main/wifi_protect.py",
