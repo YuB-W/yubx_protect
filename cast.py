@@ -150,11 +150,14 @@ def set_volume():
     for device_id in device_ids:
         device = chromecasts[int(device_id)]
         try:
-            logging.info(f"Setting volume to {volume_level} on {device.name}...")
-            device.wait()
-            mc = device.media_controller
-            mc.set_volume(volume_level)
-            logging.info(f"Volume set on {device.name}.")
+            volume_level = float(volume_level)
+            if 0.0 <= volume_level <= 1.0:
+                logging.info(f"Setting volume to {volume_level} on {device.name}...")
+                device.wait()
+                device.set_volume(volume_level)
+                logging.info(f"Volume set to {volume_level} on {device.name}.")
+            else:
+                logging.warning(f"Volume level {volume_level} is out of range. Skipping.")
         except Exception as e:
             logging.error(f"Error setting volume on {device.name}: {e}")
 
@@ -172,8 +175,7 @@ def mute():
         try:
             logging.info(f"Muting {device.name}...")
             device.wait()
-            mc = device.media_controller
-            mc.set_volume(0)
+            device.set_volume(0)
             logging.info(f"{device.name} is muted.")
         except Exception as e:
             logging.error(f"Error muting {device.name}: {e}")
@@ -192,9 +194,8 @@ def unmute():
         try:
             logging.info(f"Unmuting {device.name}...")
             device.wait()
-            mc = device.media_controller
             default_volume = load_config().get('default_volume', 0.5)
-            mc.set_volume(default_volume)
+            device.set_volume(default_volume)
             logging.info(f"{device.name} is unmuted.")
         except Exception as e:
             logging.error(f"Error unmuting {device.name}: {e}")
