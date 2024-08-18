@@ -1,109 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chromecast Controller</title>
     <style>
         body {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: #0d0d0d;
-            color: #00ff00;
-            margin: 0;
-            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #0f0;
             text-align: center;
         }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+        }
         h1 {
-            color: #00ff00;
-            margin-top: 20px;
+            color: #0f0;
+            font-size: 2em;
         }
         .device-list {
-            margin: 20px;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+            margin-bottom: 20px;
         }
-        .device-item {
-            background-color: #222;
-            border: 1px solid #00ff00;
-            border-radius: 5px;
-            padding: 10px;
+        .device {
+            background-color: #111;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 15px;
             margin: 10px;
             width: 250px;
-            text-align: left;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
         }
-        .device-item h2 {
-            color: #00ff00;
+        .device h2 {
             margin: 0;
+            font-size: 1.5em;
         }
-        button {
-            margin: 5px;
-            padding: 10px;
+        .device button {
+            background-color: #0f0;
             border: none;
+            color: #000;
+            padding: 10px;
+            margin: 5px;
             border-radius: 5px;
-            background-color: #005700;
-            color: #00ff00;
             cursor: pointer;
-            font-family: 'Courier New', Courier, monospace;
-            transition: background-color 0.3s;
+            font-size: 1em;
         }
-        button:hover {
-            background-color: #003d00;
-        }
-        button:active {
-            background-color: #002500;
+        .device button:hover {
+            background-color: #0c0;
         }
     </style>
 </head>
 <body>
-    <h1>Chromecast Controller</h1>
-    <div class="device-list">
-        {% for device in chromecasts %}
-        <div class="device-item">
-            <h2>{{ device.name }}</h2>
-            <button onclick="castMedia('{{ loop.index0 }}')">Cast Media</button>
-            <button onclick="shutdownDevice('{{ loop.index0 }}')">Shutdown</button>
-            <button onclick="turnOnDevice('{{ loop.index0 }}')">Turn On</button>
-            <button onclick="setVolume('{{ loop.index0 }}')">Set Volume</button>
-            <button onclick="muteDevice('{{ loop.index0 }}')">Mute</button>
-            <button onclick="unmuteDevice('{{ loop.index0 }}')">Unmute</button>
+    <div class="container">
+        <h1>Chromecast Controller</h1>
+        <div class="device-list">
+            {% for device in chromecasts %}
+                <div class="device">
+                    <h2>{{ device.name }}</h2>
+                    <button onclick="castMedia('{{ loop.index0 }}')">Cast Media</button>
+                    <button onclick="shutdownDevice('{{ loop.index0 }}')">Shutdown</button>
+                    <button onclick="turnOnDevice('{{ loop.index0 }}')">Turn On</button>
+                    <button onclick="setVolume('{{ loop.index0 }}')">Set Volume</button>
+                    <button onclick="muteDevice('{{ loop.index0 }}')">Mute</button>
+                    <button onclick="unmuteDevice('{{ loop.index0 }}')">Unmute</button>
+                </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
     <script>
-        function sendRequest(action, data) {
-            fetch('/' + action, {
+        function sendRequest(endpoint, data) {
+            fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(data)
-            }).then(response => response.json())
-              .then(data => console.log(data))
-              .catch(error => console.error('Error:', error));
+            })
+            .then(response => response.json())
+            .then(result => {
+                alert('Operation Successful');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Operation Failed');
+            });
         }
 
         function castMedia(deviceId) {
-            sendRequest('cast_media', { device_ids: [deviceId], media_url: 'http://example.com/media.mp4', media_type: 'video/mp4' });
+            const mediaUrl = prompt('Enter media URL:');
+            const mediaType = prompt('Enter media type (e.g., video/mp4):');
+            const duration = prompt('Enter duration in seconds (leave blank to not stop):');
+            sendRequest('/cast_media', {
+                device_ids: [deviceId],
+                media_url: mediaUrl,
+                media_type: mediaType,
+                duration: duration ? parseFloat(duration) : null
+            });
         }
 
         function shutdownDevice(deviceId) {
-            sendRequest('shutdown', { device_ids: [deviceId] });
+            sendRequest('/shutdown', { device_ids: [deviceId] });
         }
 
         function turnOnDevice(deviceId) {
-            sendRequest('turn_on', { device_ids: [deviceId] });
+            sendRequest('/turn_on', { device_ids: [deviceId] });
         }
 
         function setVolume(deviceId) {
-            sendRequest('set_volume', { device_ids: [deviceId], volume_level: 0.5 });
+            const volumeLevel = prompt('Enter volume level (0.0 to 1.0):');
+            sendRequest('/set_volume', {
+                device_ids: [deviceId],
+                volume_level: parseFloat(volumeLevel)
+            });
         }
 
         function muteDevice(deviceId) {
-            sendRequest('mute', { device_ids: [deviceId] });
+            sendRequest('/mute', { device_ids: [deviceId] });
         }
 
         function unmuteDevice(deviceId) {
-            sendRequest('unmute', { device_ids: [deviceId] });
+            sendRequest('/unmute', { device_ids: [deviceId] });
         }
     </script>
 </body>
