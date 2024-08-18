@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500&display=swap" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(180deg, #000000, #1c1c1c);
+            background: linear-gradient(180deg, #000000, #2d2d2d);
             color: #eaeaea;
             font-family: 'Orbitron', sans-serif;
             margin: 0;
@@ -26,24 +26,35 @@
             position: relative;
         }
         h1 {
-            color: #00ff99;
+            color: #00ffcc;
             font-size: 4rem;
             text-shadow: 0 0 20px rgba(0, 255, 255, 0.7);
-            animation: neonPulse 2s infinite alternate;
+            animation: neonPulse 1.5s infinite alternate, glitch 1.5s infinite;
         }
         @keyframes neonPulse {
             from { text-shadow: 0 0 20px rgba(0, 255, 255, 0.7); }
-            to { text-shadow: 0 0 40px rgba(0, 255, 255, 1); }
+            to { text-shadow: 0 0 30px rgba(0, 255, 255, 1); }
+        }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-5px, 5px); }
+            40% { transform: translate(5px, -5px); }
+            60% { transform: translate(-5px, -5px); }
+            80% { transform: translate(5px, 5px); }
+            100% { transform: translate(0); }
         }
         h2 {
             color: #ff0057;
             font-size: 3rem;
             margin-bottom: 20px;
             text-shadow: 0 0 15px rgba(255, 0, 87, 0.7);
+            border-bottom: 2px solid #ff0057;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
         .controls {
             margin: 20px 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
@@ -58,9 +69,15 @@
             color: #eaeaea;
             font-size: 16px;
             box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.7);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        input[type="text"]:focus, input[type="number"]:focus {
+            background-color: #222;
+            border-color: #00ffcc;
+            outline: none;
         }
         button {
-            background-color: #00ff99;
+            background-color: #00ffcc;
             color: #000;
             border: none;
             padding: 15px;
@@ -73,7 +90,7 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
         }
         button:hover {
-            background-color: #00cc88;
+            background-color: #00cc99;
             transform: translateY(-2px);
         }
         button:active {
@@ -108,6 +125,8 @@
             border-radius: 8px;
             background-color: #222;
             transition: background-color 0.3s, transform 0.2s;
+            position: relative;
+            overflow: hidden;
         }
         .device-list label:hover {
             background-color: #333;
@@ -116,6 +135,22 @@
         .device-list input[type="checkbox"] {
             margin-right: 15px;
         }
+        .device-list::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 255, 255, 0.2);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s;
+            z-index: 0;
+        }
+        .device-list label:hover::before {
+            transform: scaleX(1);
+        }
         footer {
             text-align: center;
             margin-top: 30px;
@@ -123,7 +158,7 @@
             color: #888;
         }
         footer a {
-            color: #00ff99;
+            color: #00ffcc;
             text-decoration: none;
         }
         footer a:hover {
@@ -134,7 +169,7 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-terminal"></i> YuB-X Cyber Command Center</h1>
+            <h1><i class="fas fa-hacker-news"></i> YuB-X Cyber Command Center</h1>
         </header>
 
         <div class="controls">
@@ -195,17 +230,17 @@
                         $('.status').text('Action ' + action + ' completed successfully!');
                     },
                     error: function (xhr) {
-                        $('.status').text('An error occurred: ' + xhr.responseText);
+                        $('.status').text('Error: ' + xhr.responseText);
                     }
                 });
             });
 
             function getSelectedDeviceIds() {
-                var selected = [];
+                var selectedIds = [];
                 $('input[name="device_ids"]:checked').each(function () {
-                    selected.push($(this).val());
+                    selectedIds.push($(this).val());
                 });
-                return selected;
+                return selectedIds;
             }
         });
     </script>
