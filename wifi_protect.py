@@ -228,10 +228,13 @@ def start_sniffing():
         if iface:
             start_sniffing_thread(iface)
             return jsonify(status="Sniffing started")
-        return jsonify(status="Interface not provided"), 400
+        else:
+            logger.error("No interface provided for sniffing.")
+            return jsonify(status="Error", message="No network interface provided. Please select a valid interface."), 400
     except Exception as e:
         logger.error(f"Error starting sniffing: {e}")
-        return jsonify(status="Error starting sniffing"), 500
+        return jsonify(status="Error", message="Failed to start sniffing. Please check the interface and try again."), 500
+
 
 @app.route('/stop_sniffing', methods=['POST'])
 def stop_sniffing():
@@ -255,18 +258,25 @@ def check_and_fix_interface(iface_name):
     """Check and fix the network interface if needed."""
     try:
         iface_status = run_command(['ip', 'link', 'show', iface_name])
+        
+        if not iface_status:
+            logger.error(f"No such interface: {iface_name}")
+            return jsonify(status="Error", message=f"Interface '{iface_name}' does not exist. Please check the interface name."), 400
+        
         if 'state UP' not in iface_status:
             logger.error(f"Interface {iface_name} is down. Attempting to bring it up.")
             run_command(['sudo', 'ip', 'link', 'set', iface_name, 'up'])
         
         if 'Mode:monitor' not in iface_status:
             logger.error(f"Interface {iface_name} is not in monitor mode. Setting monitor mode.")
-            run_command(['sudo', 'iw', iface_name, 'set', 'type', 'monitor'])
-
-        return True
+            run_command(['sudo', 'iw', 'dev', iface_name, 'set', 'type', 'monitor'])
+        
+        logger.info(f"Interface {iface_name} is ready and in monitor mode.")
+        return jsonify(status="Success", message=f"Interface '{iface_name}' is ready for sniffing.")
+    
     except Exception as e:
         logger.error(f"Error checking or fixing interface {iface_name}: {e}")
-        return False
+        return jsonify(status="Error", message=f"Failed to check or fix interface '{iface_name}'. {str(e)}"), 500
 
 def start_sniffing_thread(iface_name):
     """Start packet sniffing in a separate thread."""
