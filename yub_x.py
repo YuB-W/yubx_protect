@@ -4,27 +4,42 @@ import subprocess
 import time
 import urllib.request
 from urllib.error import HTTPError, URLError
-from colorama import Fore, init
+from colorama import Fore, init, Back
 import hashlib
+import itertools
 
 # Initialize colorama for colorful terminal output
 init(autoreset=True)
 
+def animate_loading(text, duration=2):
+    """Create a cool loading animation effect."""
+    spinner = itertools.cycle(['|', '/', '-', '\\'])
+    end_time = time.time() + duration
+    while time.time() < end_time:
+        sys.stdout.write(Fore.CYAN + f"\r{text} " + next(spinner))
+        sys.stdout.flush()
+        time.sleep(0.1)
+
 def print_banner():
-    """Print a cool cyber-style YuB-X banner."""
-    banner = """
-    ====================================
-          ██╗   ██╗██╗   ██╗██████╗ 
-          ██║   ██║██║   ██║██╔══██╗
-          ██║   ██║██║   ██║██████╔╝
-          ██║   ██║██║   ██║██╔═══╝ 
-          ╚██████╔╝╚██████╔╝██║     
-           ╚═════╝  ╚═════╝ ╚═╝     
-    ====================================
-               YuB-X Protect V1.3
-    ====================================
-    """
-    print(Fore.GREEN + banner)
+    """Print a cool cyber-style YuB-X banner with an animation."""
+    banner_lines = [
+        "    ====================================",
+        "          ██╗   ██╗██╗   ██╗██████╗ ",
+        "          ██║   ██║██║   ██║██╔══██╗",
+        "          ██║   ██║██║   ██║██████╔╝",
+        "          ██║   ██║██║   ██║██╔═══╝ ",
+        "          ╚██████╔╝╚██████╔╝██║     ",
+        "           ╚═════╝  ╚═════╝ ╚═╝     ",
+        "    ====================================",
+        "               YuB-X Protect V1.4",
+        "    ====================================",
+    ]
+
+    # Animate the banner line by line
+    for line in banner_lines:
+        animate_loading(line, duration=0.2)
+        print(Fore.GREEN + line)
+        time.sleep(0.1)
 
 def create_dir_if_missing(path):
     """Create a directory if it doesn't exist."""
