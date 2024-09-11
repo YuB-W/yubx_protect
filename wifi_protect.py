@@ -339,15 +339,16 @@ def start_auth_dos(bssid, iface_name):
     last_attack_time[bssid] = current_time
     logging.info(f"Auth DoS on BSSID {bssid} completed.")
    
-def get_ip_address(interface):
+def get_ip_address():
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(
-            s.fileno(),
-            0x8915,  # SIOCGIFADDR
-            struct.pack('256s', interface[:15].encode('utf-8'))
-        )[20:24])
-    except IOError:
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+        if ip_address:
+            return ip_address
+        else:
+            raise Exception("Unable to retrieve IP address")
+    except Exception as e:
+        logger.error(f"Error retrieving IP address: {e}")
         return None
     
 def fetch_data(url):
@@ -406,8 +407,12 @@ def serve_map():
     
 def main():
     """Main function to run the Flask app."""
-    ip_address = get_ip_address('eth0')
-    print("\nWebsite:", ip_address + ":5000\n") 
+     ip_address = get_ip_address()
+    if ip_address is None:
+        print("Error: IP address could not be retrieved")
+    else:
+        print("\nWebsite:", ip_address + ":5000\n")
+ 
 	
     global sniff_thread
     sniff_thread = threading.Thread(target=start_sniffing_thread, args=('wlan0',))
