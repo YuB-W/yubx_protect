@@ -339,17 +339,7 @@ def start_auth_dos(bssid, iface_name):
     last_attack_time[bssid] = current_time
     logging.info(f"Auth DoS on BSSID {bssid} completed.")
    
-def get_ip_address():
-    try:
-        hostname = socket.gethostname()
-        ip_address = socket.gethostbyname(hostname)
-        if ip_address:
-            return ip_address
-        else:
-            raise Exception("Unable to retrieve IP address")
-    except Exception as e:
-        logger.error(f"Error retrieving IP address: {e}")
-        return None
+
     
 def fetch_data(url):
     """Fetch data from the specified URL and return the JSON response."""
@@ -404,15 +394,40 @@ def get_alerts():
 def serve_map():
     return render_template_string('', 'indexx.html')
 
+
+def get_private_ip():
+    """Get a valid private IP address."""
+    import socket
+    import ipaddress
+    try:
+        # Get all addresses associated with the hostname
+        hostname = socket.gethostname()
+        ip_addresses = socket.gethostbyname_ex(hostname)[2]
+
+        # Filter for private IP addresses (192.x.x.x, 10.x.x.x, etc.)
+        for ip in ip_addresses:
+            ip_obj = ipaddress.ip_address(ip)
+            if ip_obj.is_private and not ip_obj.is_loopback:
+                return str(ip_obj)
+        
+        # Fallback: Try getting the default network interface IP (e.g., eth0, wlan0)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            # Connecting to a public IP to get the default network interface
+            s.connect(('8.8.8.8', 1))  # This IP is not actually contacted
+            return s.getsockname()[0]
+
+    except Exception as e:
+        print(f"Error retrieving IP address: {e}")
+        return None 
     
 def main():
     """Main function to run the Flask app."""
-     ip_address = get_ip_address()
+    ip_address = get_private_ip()
+    
     if ip_address is None:
         print("Error: IP address could not be retrieved")
     else:
-        print("\nWebsite:", ip_address + ":5000\n")
- 
+        print(f"\nWebsite: {ip_address}:5000\n")
 	
     global sniff_thread
     sniff_thread = threading.Thread(target=start_sniffing_thread, args=('wlan0',))
