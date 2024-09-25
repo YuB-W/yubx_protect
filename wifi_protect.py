@@ -1,11 +1,38 @@
 import subprocess
+import sys
+
+required_modules = [
+    "subprocess", "threading", "time", "logging", "datetime", "scapy", 
+    "flask", "playsound", "random", "string", "socket", "fcntl", 
+    "struct", "requests", "json", "numpy"
+]
+
+def install_module(module_name):
+    """Install the module via pip if it's not already installed."""
+    try:
+        print(f"[*] Checking if {module_name} is installed...")
+        __import__(module_name)
+        print(f"[+] {module_name} is already installed.")
+    except ImportError:
+        print(f"[!] {module_name} not found. Installing...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", module_name])
+        print(f"[+] {module_name} installed successfully.")
+
+def check_and_install_modules():
+    """Check if all required modules are installed, install them if missing."""
+    for module in required_modules:
+        install_module(module)
+
+check_and_install_modules()
+
+import subprocess
 import threading
 import time
 import logging
 from datetime import datetime, timedelta
 from scapy.all import *
 from flask import Flask, render_template_string, request, jsonify
-from scapy.all import Dot11Deauth, sniff, RadioTap, Dot11, Dot11Auth, sendp , Dot11Beacon
+from scapy.all import Dot11Deauth, sniff, RadioTap, Dot11, Dot11Auth, sendp, Dot11Beacon
 from playsound import playsound
 import random
 import string
@@ -19,6 +46,8 @@ import numpy as np
 # Configure logging
 logging.basicConfig(filename='wifi_monitor.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger()
+
+
 attacks = {
     "deauth": [],
     "auth": [],
@@ -34,7 +63,7 @@ app = Flask(__name__)
 
 url = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
 file_path = "alerts_history.json"
-delay_seconds = 5  # Delay in seconds between each fetch and send operation
+delay_seconds = 3  # Delay in seconds between each fetch and send operation
 
 
 with open('/home/kali/Desktop/Python/yubx_protect/website.html', 'r') as file:
