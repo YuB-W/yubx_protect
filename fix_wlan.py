@@ -83,7 +83,7 @@ def disable_airplane_mode():
         run_command("rfkill unblock all")
         print("[+] Airplane mode disabled.")
 
-def wait_for_wlan(timeout=5, interval=5):
+def wait_for_wlan(timeout=120, interval=5):
     """Wait for a wlan interface to be detected, with a timeout."""
     print(f"[*] Waiting for wlan interfaces to be detected (timeout: {timeout} seconds)...")
     elapsed_time = 0
