@@ -63,7 +63,7 @@ app = Flask(__name__)
 
 url = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
 file_path = "alerts_history.json"
-delay_seconds = 3  # Delay in seconds between each fetch and send operation
+delay_seconds = 5  # Delay in seconds between each fetch and send operation
 
 
 with open('/home/kali/Desktop/Python/yubx_protect/website.html', 'r') as file:
