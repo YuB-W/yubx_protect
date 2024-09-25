@@ -1,183 +1,139 @@
-from flask import Flask, render_template_string, request, jsonify
-import pychromecast
-import logging
-import json
 import os
+import subprocess
+import time
 
-# Configure logging
-logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Configuration File
-CONFIG_FILE = 'config.json'
-
-def load_config():
-    """Load configuration from a JSON file."""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as file:
-            return json.load(file)
-    return {"default_volume": 0.5}
-
-def save_config(config):
-    """Save configuration to a JSON file."""
-    with open(CONFIG_FILE, 'w') as file:
-        json.dump(config, file, indent=4)
-
-app = Flask(__name__)
-
-# Read HTML content from file
-with open('/home/kali/Desktop/Python/website.html', 'r') as file:
-    MAP_HTML = file.read()
-
-def discover_chromecast_devices(timeout=5):
-    """Discover Chromecast devices with a specified timeout."""
-    logging.info("Discovering Chromecast devices...")
+def run_command(command):
+    """Run a shell command and return the output."""
     try:
-        chromecasts, _ = pychromecast.get_chromecasts(timeout=timeout)
-        return chromecasts
-    except Exception as e:
-        logging.error(f"An error occurred while discovering devices: {e}")
-        return []
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return result.stdout.decode('utf-8').strip(), result.stderr.decode('utf-8').strip()
+    except subprocess.CalledProcessError as e:
+        return None, f"Error: {e.stderr.decode('utf-8').strip()}"
 
-@app.route('/')
-def index():
-    """Render the main page with HTML content."""
-    return render_template_string(MAP_HTML)
+def check_wlan_interfaces():
+    """Check available wlan interfaces."""
+    stdout, stderr = run_command("iw dev | grep Interface")
+    if stdout:
+        interfaces = [line.split()[1] for line in stdout.splitlines()]
+        return interfaces
+    return []
 
-@app.route('/cast_media', methods=['POST'])
-def cast_media():
-    """Cast media to selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    media_url = data.get('media_url', '')
-    media_type = data.get('media_type', '')
-    duration = data.get('duration', None)
-    chromecasts = discover_chromecast_devices()
+def bring_interface_up(interface):
+    """Bring the wlan interface up."""
+    print(f"[*] Bringing up interface {interface}...")
+    _, stderr = run_command(f"sudo ip link set {interface} up")
+    if stderr:
+        print(f"[!] Error bringing {interface} up: {stderr}")
+    else:
+        print(f"[+] {interface} is up.")
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Casting media {media_url} to {device.name}...")
-            device.wait()
-            mc = device.media_controller
+def bring_interface_down(interface):
+    """Bring the wlan interface down."""
+    print(f"[*] Bringing down interface {interface}...")
+    _, stderr = run_command(f"sudo ip link set {interface} down")
+    if stderr:
+        print(f"[!] Error bringing {interface} down: {stderr}")
+    else:
+        print(f"[+] {interface} is down.")
 
-            if not device.is_idle:
-                logging.warning(f"{device.name} is not idle. Skipping casting.")
-                continue
+def set_monitor_mode(interface):
+    """Set wlan interface to monitor mode."""
+    print(f"[*] Setting {interface} to monitor mode...")
+    bring_interface_down(interface)
+    stdout, stderr = run_command(f"sudo iw dev {interface} set type monitor")
+    if stderr:
+        print(f"[!] Error setting monitor mode for {interface}: {stderr}")
+    else:
+        print(f"[+] {interface} set to monitor mode.")
+    bring_interface_up(interface)
 
-            mc.play_media(media_url, media_type)
-            mc.block_until_active()
+def restart_network_manager():
+    """Restart the Network Manager service."""
+    print("[*] Restarting Network Manager...")
+    _, stderr = run_command("sudo systemctl restart NetworkManager")
+    if stderr:
+        print(f"[!] Error restarting NetworkManager: {stderr}")
+    else:
+        print("[+] NetworkManager restarted successfully.")
 
-            if duration:
-                logging.info(f"Waiting for {duration} seconds...")
-                time.sleep(duration)
-                mc.stop()
+def reload_wifi_driver():
+    """Reload the Wi-Fi driver by removing and adding kernel modules."""
+    print("[*] Reloading Wi-Fi driver...")
+    _, stderr = run_command("sudo modprobe -r iwlwifi && sudo modprobe iwlwifi")
+    if stderr:
+        print(f"[!] Error reloading Wi-Fi driver: {stderr}")
+    else:
+        print("[+] Wi-Fi driver reloaded successfully.")
 
-            logging.info(f"Media casting started on {device.name}.")
-        except Exception as e:
-            logging.error(f"An error occurred while casting: {e}")
+def renew_dhcp(interface):
+    """Renew DHCP lease for the interface."""
+    print(f"[*] Renewing DHCP lease for {interface}...")
+    _, stderr = run_command(f"sudo dhclient -r {interface} && sudo dhclient {interface}")
+    if stderr:
+        print(f"[!] Error renewing DHCP lease for {interface}: {stderr}")
+    else:
+        print(f"[+] DHCP lease renewed for {interface}.")
 
-    return jsonify({'status': 'success'}), 200
+def disable_airplane_mode():
+    """Disable airplane mode if it's enabled."""
+    print("[*] Checking for Airplane mode...")
+    stdout, _ = run_command("rfkill list all | grep -i 'Airplane Mode: on'")
+    if stdout:
+        print("[*] Disabling Airplane mode...")
+        run_command("rfkill unblock all")
+        print("[+] Airplane mode disabled.")
 
-@app.route('/shutdown', methods=['POST'])
-def shutdown():
-    """Shutdown the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
+def wait_for_wlan(timeout=5, interval=5):
+    """Wait for a wlan interface to be detected, with a timeout."""
+    print(f"[*] Waiting for wlan interfaces to be detected (timeout: {timeout} seconds)...")
+    elapsed_time = 0
+    while elapsed_time < timeout:
+        interfaces = check_wlan_interfaces()
+        if interfaces:
+            print(f"[+] Detected wlan interface(s): {', '.join(interfaces)}")
+            return interfaces
+        time.sleep(interval)
+        elapsed_time += interval
+        print(f"[*] Retrying... {elapsed_time}/{timeout} seconds")
+    
+    print("[!] No wlan interfaces detected after waiting. Exiting.")
+    return None
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Shutting down {device.name}...")
-            device.quit_app()
-            logging.info(f"{device.name} has been shut down.")
-        except Exception as e:
-            logging.error(f"Error shutting down {device.name}: {e}")
+def fix_wlan_issues():
+    """Fix all wlan issues by resetting interfaces, drivers, and services."""
+    print("[*] Fixing wlan issues...")
 
-    return jsonify({'status': 'success'}), 200
+    # Step 1: Disable Airplane mode if enabled
+    disable_airplane_mode()
 
-@app.route('/turn_on', methods=['POST'])
-def turn_on():
-    """Turn on the selected devices by playing default media."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
+    # Step 2: Check available wlan interfaces
+    interfaces = check_wlan_interfaces()
+    if not interfaces:
+        print("[!] No wlan interfaces found. Reloading Wi-Fi driver...")
+        reload_wifi_driver()
+        interfaces = wait_for_wlan()  # Wait for wlan to appear
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Turning on {device.name}...")
-            device.wait()
-            mc = device.media_controller
-            mc.play_media('http://example.com/default_media.mp4', 'video/mp4')
-            mc.block_until_active()
-            logging.info(f"{device.name} turned on and playing default media.")
-        except Exception as e:
-            logging.error(f"Error turning on {device.name}: {e}")
+    if not interfaces:
+        print("[!] No wlan interfaces detected after driver reload. Exiting.")
+        return
 
-    return jsonify({'status': 'success'}), 200
+    # Step 3: Bring interfaces up and set monitor mode
+    for interface in interfaces:
+        print(f"[*] Working on interface {interface}...")
 
-@app.route('/set_volume', methods=['POST'])
-def set_volume():
-    """Set volume for the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    volume_level = data.get('volume_level', 0.5)
-    chromecasts = discover_chromecast_devices()
+        bring_interface_down(interface)
+        bring_interface_up(interface)
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Setting volume to {volume_level} on {device.name}...")
-            device.wait()
-            mc = device.media_controller
-            mc.set_volume(volume_level)
-            logging.info(f"Volume set on {device.name}.")
-        except Exception as e:
-            logging.error(f"Error setting volume on {device.name}: {e}")
+        # Set monitor mode for wifite compatibility
+        set_monitor_mode(interface)
 
-    return jsonify({'status': 'success'}), 200
+        # Renew DHCP lease if needed
+        renew_dhcp(interface)
 
-@app.route('/mute', methods=['POST'])
-def mute():
-    """Mute the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
+    # Step 4: Restart Network Manager
+    restart_network_manager()
 
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Muting {device.name}...")
-            device.wait()
-            mc = device.media_controller
-            mc.set_volume(0)
-            logging.info(f"{device.name} is muted.")
-        except Exception as e:
-            logging.error(f"Error muting {device.name}: {e}")
+    print("[+] All wlan interfaces have been fixed and set to monitor mode for wifite.")
 
-    return jsonify({'status': 'success'}), 200
-
-@app.route('/unmute', methods=['POST'])
-def unmute():
-    """Unmute the selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    chromecasts = discover_chromecast_devices()
-
-    for device_id in device_ids:
-        device = chromecasts[int(device_id)]
-        try:
-            logging.info(f"Unmuting {device.name}...")
-            device.wait()
-            mc = device.media_controller
-            default_volume = load_config().get('default_volume', 0.5)
-            mc.set_volume(default_volume)
-            logging.info(f"{device.name} is unmuted.")
-        except Exception as e:
-            logging.error(f"Error unmuting {device.name}: {e}")
-
-    return jsonify({'status': 'success'}), 200
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+if __name__ == "__main__":
+    fix_wlan_issues()
