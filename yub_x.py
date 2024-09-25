@@ -154,14 +154,21 @@ def install_required_packages():
             install_package(package)
 
 def check_and_update_system():
-    """Update and upgrade the system using apt."""
+    print(Fore.YELLOW + "[INFO] Checking for system updates...")
     try:
-        print(Fore.YELLOW + "[INFO] Updating the system...")
-        subprocess.check_call(['sudo', 'apt', 'update'])
-        subprocess.check_call(['sudo', 'apt', 'upgrade', '-y'])
-        print(Fore.GREEN + "[SUCCESS] System updated.")
+        subprocess.run(["sudo", "apt-get", "update"], check=True)
+        print(Fore.GREEN + "[SUCCESS] System package lists updated.")
+        
+        # Prompt the user to upgrade if updates are available
+        upgrade = input(Fore.YELLOW + "Do you want to upgrade packages? (y/n): ")
+        if upgrade.lower() == 'y':
+            subprocess.run(["sudo", "apt-get", "upgrade", "-y"], check=True)
+            print(Fore.GREEN + "[SUCCESS] System packages upgraded.")
+        else:
+            print(Fore.YELLOW + "[INFO] Upgrade skipped.")
+            
     except subprocess.CalledProcessError as e:
-        print(Fore.RED + f"[ERROR] System update failed: {e}")
+        print(Fore.RED + f"[ERROR] An error occurred while checking for updates: {e}")
 
 def open_terminal_window():
     """Open a single terminal window with split panes for commands."""
@@ -242,9 +249,27 @@ def main():
     with open(setup_complete_flag, 'w') as f:
         f.write("Setup completed successfully.")
 
-    # Final message and open terminal window
+    # Final message and menu options
     print(Fore.GREEN + "[SUCCESS] Setup completed successfully! Opening terminal...")
-    open_terminal_window()
+
+    # Print menu options
+    print(Fore.MAGENTA + """
+        ====================================
+            1. Start 
+            2. Exit 
+        ====================================
+    """)
+
+    # Get user choice
+    choice = input(Fore.YELLOW + "Please enter your choice (1 or 2): ")
+
+    if choice == "1":
+        open_terminal_window()
+    elif choice == "2":
+        print(Fore.RED + "[INFO] Exiting the program.")
+        sys.exit(0)
+    else:
+        print(Fore.RED + "[ERROR] Invalid choice. Please enter 1 or 2.")
 
 if __name__ == '__main__':
     main()
