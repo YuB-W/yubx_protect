@@ -1,27 +1,81 @@
 import os
-import sys
 import subprocess
+import sys
 import time
+
+# List of required packages
+required_packages = [
+    "python3-pyqt6",
+    "python3-rpds-py",
+    "python3-ruamel.yaml.clib",
+    "python3-setproctitle",
+    "python3-smbc",
+    "python3-snappy",
+    "python3-twisted",
+    "python3-ubjson",
+    "python3-ujson",
+    "python3-uvloop",
+    "python3-wrapt",
+    "python3-yara",
+    "python3-zstandard",
+    "sqlmap",
+    "sslyze"
+]
+
+def update_system():
+    print("Updating the system...")
+    try:
+        subprocess.run(["sudo", "apt", "update"], check=True)
+        subprocess.run(["sudo", "apt", "upgrade", "-y"], check=True)
+        print("[SUCCESS] System updated successfully!")
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] System update failed: {e}")
+        sys.exit(1)
+
+def install_packages(packages):
+    print("Installing required packages...")
+    for package in packages:
+        try:
+            subprocess.run(["sudo", "apt", "install", package, "-y"], check=True)
+            print(f"[SUCCESS] Installed {package}")
+        except subprocess.CalledProcessError:
+            print(f"[ERROR] Failed to install {package}. It may already be installed or not available.")
+
+def check_installed_packages(packages):
+    print("Checking installed packages...")
+    for package in packages:
+        try:
+            subprocess.run(["dpkg", "-l", package], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print(f"[INFO] {package} is already installed.")
+        except subprocess.CalledProcessError:
+            print(f"[INFO] {package} is not installed. Attempting to install...")
+            install_packages([package])
+
+
 import urllib.request
 from urllib.error import HTTPError, URLError
-from colorama import Fore, init, Back
 import hashlib
 import itertools
+from threading import Thread
+from colorama import Fore, init
 
 # Initialize colorama for colorful terminal output
 init(autoreset=True)
 
-def animate_loading(text, duration=2):
-    """Create a cool loading animation effect."""
+def animated_loading(message):
+    """Display a loading animation with the provided message."""
     spinner = itertools.cycle(['|', '/', '-', '\\'])
-    end_time = time.time() + duration
-    while time.time() < end_time:
-        sys.stdout.write(Fore.CYAN + f"\r{text} " + next(spinner))
+    while getattr(animated_loading, "running", True):
+        sys.stdout.write(Fore.CYAN + f"\r{message} " + next(spinner))
         sys.stdout.flush()
         time.sleep(0.1)
 
+def stop_loading():
+    """Stop the loading animation."""
+    animated_loading.running = False
+
 def print_banner():
-    """Print a cool cyber-style YuB-X banner with an animation."""
+    """Print a cool cyber-style YuB-X banner."""
     banner_lines = [
         "    ====================================",
         "          ██╗   ██╗██╗   ██╗██████╗ ",
@@ -35,9 +89,7 @@ def print_banner():
         "    ====================================",
     ]
 
-    # Animate the banner line by line
     for line in banner_lines:
-        animate_loading(line, duration=0.2)
         print(Fore.GREEN + line)
         time.sleep(0.1)
 
@@ -83,54 +135,36 @@ def is_package_installed(package):
         return False
 
 def install_package(package):
-    """Install a Python package using pip with sudo."""
+    """Install a Python package using pip."""
     try:
         print(Fore.YELLOW + f"[INFO] Installing {package}...")
-        subprocess.check_call(['sudo', 'pip3', 'install', package])
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
         print(Fore.GREEN + f"[SUCCESS] Installed {package}.")
     except subprocess.CalledProcessError:
         print(Fore.RED + f"[ERROR] Failed to install {package}.")
 
-def uninstall_all_packages():
-    """Uninstall all required Python packages."""
+def install_required_packages():
+    """Install required Python packages if not already installed."""
     required_packages = [
         'flask', 'scapy', 'playsound', 'requests', 'numpy',
-        'pychromecast', 'logging'
+        'pychromecast', 'colorama', 'hashlib', 'itertools'
     ]
     for package in required_packages:
-        try:
-            print(Fore.YELLOW + f"[INFO] Uninstalling {package}...")
-            subprocess.check_call(['sudo', 'pip3', 'uninstall', '-y', package])
-            print(Fore.GREEN + f"[SUCCESS] Uninstalled {package}.")
-        except subprocess.CalledProcessError:
-            print(Fore.RED + f"[ERROR] Failed to uninstall {package}.")
+        if not is_package_installed(package):
+            install_package(package)
 
-def remove_files_and_directories(base_dir):
-    """Remove all files and directories in the base directory."""
-    if os.path.exists(base_dir):
-        try:
-            print(Fore.YELLOW + f"[INFO] Deleting directory: {base_dir}...")
-            subprocess.check_call(['sudo', 'rm', '-r', '-f', base_dir])
-            print(Fore.GREEN + f"[SUCCESS] Removed directory: {base_dir}")
-        except subprocess.CalledProcessError as e:
-            print(Fore.RED + f"[ERROR] Failed to remove directory {base_dir}: {e}")
+def check_and_update_system():
+    """Update and upgrade the system using apt."""
+    try:
+        print(Fore.YELLOW + "[INFO] Updating the system...")
+        subprocess.check_call(['sudo', 'apt', 'update'])
+        subprocess.check_call(['sudo', 'apt', 'upgrade', '-y'])
+        print(Fore.GREEN + "[SUCCESS] System updated.")
+    except subprocess.CalledProcessError as e:
+        print(Fore.RED + f"[ERROR] System update failed: {e}")
 
-def install_packages():
-    """Install required Python packages."""
-    required_packages = [
-        'flask', 'scapy', 'playsound', 'requests', 'numpy',
-        'pychromecast', 'logging'
-    ]
-    for package in required_packages:
-        install_package(package)
-
-def reinstall_packages():
-    """Reinstall required Python packages."""
-    uninstall_all_packages()
-    install_packages()
-
-def open_terminal_windows():
-    """Open terminal windows with different commands."""
+def open_terminal_window():
+    """Open a single terminal window with split panes for commands."""
     commands = [
         'sudo mousepad /home/kali/Desktop/Python/yubx_protect/website.html',
         'sudo mousepad /home/kali/Desktop/Python/yubx_protect/index.html',
@@ -140,18 +174,47 @@ def open_terminal_windows():
         'sudo python3 /home/kali/Desktop/Python/yubx_protect/cast.py',
         'sudo python3 /home/kali/Desktop/Python/yubx_protect/wifi_protect.py'
     ]
-    
-    # Open terminal windows with the commands
-    for command in commands:
-        print(Fore.YELLOW + f"[INFO] Opening terminal for: {command}")
-        subprocess.Popen(['xterm', '-hold', '-e', f'sh -c "{command}"'])
-        time.sleep(1)  # Delay to ensure each terminal opens correctly
+
+    # Start a new tmux session with a specific name
+    subprocess.Popen(['tmux', 'new-session', '-d', '-s', 'yubx_protect'])
+
+    # Create a new window and run commands in split panes
+    for i, command in enumerate(commands):
+        if i > 0:
+            # Split the window vertically or horizontally based on the pane number
+            if i % 2 == 0:
+                subprocess.Popen(['tmux', 'split-window', '-h'])
+            else:
+                subprocess.Popen(['tmux', 'split-window', '-v'])
+        
+        # Send the command to the respective pane
+        subprocess.Popen(['tmux', 'send-keys', '-t', f'yubx_protect:{i}', f'{command}', 'C-m'])
+
+    # Attach to the tmux session
+    subprocess.Popen(['tmux', 'attach-session', '-t', 'yubx_protect'])
 
 def main():
     print_banner()
 
     base_dir = '/home/kali/Desktop/Python/yubx_protect'
+    setup_complete_flag = '/home/kali/.yubx_setup_complete'
+
+    # Check if the setup has already been completed
+    if os.path.exists(setup_complete_flag):
+        print(Fore.YELLOW + "[INFO] Setup has already been completed. Exiting.")
+        sys.exit(0)
+
     create_dir_if_missing(base_dir)
+
+    # Start loading animation
+    loading_thread = Thread(target=animated_loading, args=("Downloading files...",))
+    loading_thread.start()
+
+    # Check for system updates
+    check_and_update_system()
+
+    # Install required packages
+    install_required_packages()
 
     # Files to download from GitHub
     files = {
@@ -166,44 +229,22 @@ def main():
         "alert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/alert_r.m4a"
     }
 
+    # Download required files
     for filename, url in files.items():
         dest_path = os.path.join(base_dir, filename)
         download_file(url, dest_path)
 
-    # User choices for managing packages and directories
-    while True:
-        print(Fore.MAGENTA + """
-        ====================================
-            1. Install packages
-            2. Reinstall packages
-            3. Delete folders (but keep Python packages)
-            4. Start
-            5. Exit
-        ====================================
-        """)
-        choice = input("Enter your choice (1-5): ").strip()
+    # Stop loading animation
+    stop_loading()
+    loading_thread.join()
 
-        if choice == '1':
-            print(Fore.MAGENTA + "[INFO] Installing required packages...")
-            install_packages()
-            break
-        elif choice == '2':
-            print(Fore.MAGENTA + "[INFO] Reinstalling required packages...")
-            reinstall_packages()
-            break
-        elif choice == '3':
-            print(Fore.MAGENTA + "[INFO] Deleting folders (but keeping Python packages)...")
-            remove_files_and_directories(base_dir)
-            break
-        elif choice == '4':
-            print(Fore.GREEN + "[INFO] Starting...")
-            open_terminal_windows()
-            break
-        elif choice == '5':
-            print(Fore.GREEN + "[INFO] Exiting.")
-            break
-        else:
-            print(Fore.RED + "[ERROR] Invalid choice. Please select a valid option.")
+    # Create setup complete flag
+    with open(setup_complete_flag, 'w') as f:
+        f.write("Setup completed successfully.")
+
+    # Final message and open terminal window
+    print(Fore.GREEN + "[SUCCESS] Setup completed successfully! Opening terminal...")
+    open_terminal_window()
 
 if __name__ == '__main__':
     main()
