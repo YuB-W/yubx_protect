@@ -1,13 +1,37 @@
+import os
+import subprocess
+import sys
+import logging
+from datetime import datetime
+
+required_modules = ["pychromecast", "termcolor"]
+
+def install_module(module_name):
+    """Install the module via pip if it's not already installed."""
+    try:
+        print(f"[*] Checking if {module_name} is installed...")
+        __import__(module_name)
+        print(f"[+] {module_name} is already installed.")
+    except ImportError:
+        print(f"[!] {module_name} not found. Installing...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", module_name])
+        print(f"[+] {module_name} installed successfully.")
+
+def check_and_install_modules():
+    """Check if all required modules are installed, install them if missing."""
+    for module in required_modules:
+        install_module(module)
+
+check_and_install_modules()
+
 import pychromecast
 import time
 import threading
 import urllib.parse
-import logging
-from datetime import datetime
 from termcolor import colored
 
-# Configure logging
-logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='casting.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 def print_colored_message(message, color):
     """Print a colored message to the console."""
