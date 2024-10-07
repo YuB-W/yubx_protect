@@ -7,7 +7,7 @@
 
 ![Kali linux Logo](kali.png)
 
-**YuB Protect** is a Python-based application designed for effective Wi-Fi monitoring and protection against various security threats. This project enables users to detect, respond to, and log incidents of Wi-Fi attacks in real-time, ensuring the security of their wireless networks.
+YuB Protect is a powerful, Python-based application designed exclusively for Kali Linux to effectively monitor and protect Wi-Fi networks from security threats. It provides real-time detection, response, and logging of various Wi-Fi attacks, helping you secure your wireless networks.
 
 ## Table of Contents
 - [About](#about)
