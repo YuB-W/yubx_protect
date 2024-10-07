@@ -1,4 +1,4 @@
-# YuB Protect V2
+# YuB-X Protect V2
 
 ![YuB Protect Logo](yub.png)
 
