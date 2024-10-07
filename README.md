@@ -78,8 +78,4 @@ welcome.m4a: Welcome message sound upon application startup.
 These files can be customized by replacing them with your own audio files in the project directory.
 
 
-## Contact
-For questions, issues, or feedback, feel free to reach out to the project maintainer:
-
 Name: [Yub-X]
-GitHub: GitHub Profile
