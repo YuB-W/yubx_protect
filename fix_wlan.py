@@ -1,156 +1,146 @@
 import os
 import subprocess
 import time
+import logging
+
+LOG_FILE = "wlan_fix.log"
+logging.basicConfig(
+    filename=LOG_FILE,
+    filemode='a',
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+def log_and_print(message, level="info"):
+    """Log the message and print it to the console."""
+    print(message)
+    if level == "info":
+        logging.info(message)
+    elif level == "warning":
+        logging.warning(message)
+    elif level == "error":
+        logging.error(message)
 
 def run_command(command):
-    """Run a shell command and return the output."""
+    """Runs a shell command and returns the output, logging any errors."""
     try:
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return result.stdout.decode('utf-8').strip(), result.stderr.decode('utf-8').strip()
+        result = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT).decode()
+        return result
     except subprocess.CalledProcessError as e:
-        return None, f"Error: {e.stderr.decode('utf-8').strip()}"
+        log_and_print(f"[!] Command failed: {command} \nError: {e.output.decode()}", "error")
+        return None
 
-def check_wlan_interfaces():
-    """Check available wlan interfaces."""
-    stdout, stderr = run_command("iw dev | grep Interface")
-    if stdout:
-        interfaces = [line.split()[1] for line in stdout.splitlines()]
-        return interfaces
-    return []
+def check_rf_kill():
+    """Check the RF-kill status and unblock the wireless LAN if necessary."""
+    log_and_print("[*] Checking RF-kill status...")
+    rf_kill_output = run_command("rfkill list all")
+    if not rf_kill_output:
+        log_and_print("[!] Unable to retrieve RF-kill status.", "error")
+        return False
 
-def bring_interface_up(interface):
-    """Bring the wlan interface up."""
-    print(f"[*] Bringing up interface {interface}...")
-    _, stderr = run_command(f"sudo ip link set {interface} up")
-    if stderr:
-        print(f"[!] Error bringing {interface} up: {stderr}")
+    log_and_print(rf_kill_output)
+
+    if "Soft blocked: yes" in rf_kill_output:
+        log_and_print("[!] Wireless LAN is blocked by RF-kill. Unblocking...")
+        run_command("sudo rfkill unblock wifi")
+        time.sleep(1)  # Wait for the unblock command to take effect
+        log_and_print("[+] Wireless LAN unblocked.")
+        
+        # Check RF-kill status again
+        rf_kill_output = run_command("rfkill list all")
+        if "Soft blocked: yes" in rf_kill_output:
+            log_and_print("[!] Failed to unblock Wireless LAN. Exiting...", "error")
+            return False
     else:
-        print(f"[+] {interface} is up.")
+        log_and_print("[+] Wireless LAN is not blocked.")
+    
+    return True
+
+def check_airplane_mode():
+    """Check if the system is in airplane mode and disable it if necessary."""
+    log_and_print("[*] Checking Airplane mode status...")
+    airplane_mode_status = run_command("nmcli radio")
+    if not airplane_mode_status:
+        log_and_print("[!] Unable to retrieve Airplane mode status.", "error")
+        return False
+
+    if "enabled" in airplane_mode_status:
+        log_and_print("[!] Airplane mode is enabled. Disabling...")
+        run_command("nmcli radio all off")
+        log_and_print("[+] Airplane mode disabled.")
+    else:
+        log_and_print("[+] Airplane mode is not enabled.")
+    
+    return True
 
 def bring_interface_down(interface):
-    """Bring the wlan interface down."""
-    print(f"[*] Bringing down interface {interface}...")
-    _, stderr = run_command(f"sudo ip link set {interface} down")
-    if stderr:
-        print(f"[!] Error bringing {interface} down: {stderr}")
-    else:
-        print(f"[+] {interface} is down.")
+    """Bring down the specified interface."""
+    log_and_print(f"[*] Bringing down interface {interface}...")
+    result = run_command(f"sudo ip link set {interface} down")
+    if result is None:
+        log_and_print(f"[!] Error bringing {interface} down.", "error")
+        return False
+    log_and_print(f"[+] {interface} is down.")
+    return True
+
+def bring_interface_up(interface):
+    """Bring up the specified interface."""
+    log_and_print(f"[*] Bringing up interface {interface}...")
+    result = run_command(f"sudo ip link set {interface} up")
+    if result is None:
+        log_and_print(f"[!] Error bringing {interface} up.", "error")
+        return False
+    log_and_print(f"[+] {interface} is up.")
+    return True
 
 def set_monitor_mode(interface):
-    """Set wlan interface to monitor mode."""
-    print(f"[*] Setting {interface} to monitor mode...")
-    bring_interface_down(interface)
-    stdout, stderr = run_command(f"sudo iw dev {interface} set type monitor")
-    if stderr:
-        print(f"[!] Error setting monitor mode for {interface}: {stderr}")
-    else:
-        print(f"[+] {interface} set to monitor mode.")
-    bring_interface_up(interface)
+    """Set the WLAN interface to monitor mode."""
+    log_and_print(f"[*] Setting {interface} to monitor mode...")
+    run_command(f"sudo iw dev {interface} set type monitor")
+    log_and_print(f"[+] {interface} set to monitor mode.")
+    return bring_interface_up(interface)
+
+def renew_dhcp_lease(interface):
+    """Renew the DHCP lease for the specified interface."""
+    log_and_print(f"[*] Renewing DHCP lease for {interface}...")
+    dhcp_output = run_command(f"sudo dhclient {interface}")
+    if dhcp_output is None:
+        log_and_print(f"[!] Error renewing DHCP lease for {interface}.", "error")
+        return False
+    log_and_print(f"[+] DHCP lease renewed for {interface}.")
+    return True
 
 def restart_network_manager():
     """Restart the Network Manager service."""
-    print("[*] Restarting Network Manager...")
-    _, stderr = run_command("sudo systemctl restart NetworkManager")
-    if stderr:
-        print(f"[!] Error restarting NetworkManager: {stderr}")
-    else:
-        print("[+] NetworkManager restarted successfully.")
+    log_and_print("[*] Restarting Network Manager...")
+    result = run_command("sudo systemctl restart NetworkManager")
+    if result is None:
+        log_and_print("[!] Error restarting Network Manager.", "error")
+        return False
+    log_and_print("[+] Network Manager restarted successfully.")
+    return True
 
-def reload_wifi_driver():
-    """Reload the Wi-Fi driver by removing and adding kernel modules."""
-    print("[*] Reloading Wi-Fi driver...")
-    _, stderr = run_command("sudo modprobe -r iwlwifi && sudo modprobe iwlwifi")
-    if stderr:
-        print(f"[!] Error reloading Wi-Fi driver: {stderr}")
-    else:
-        print("[+] Wi-Fi driver reloaded successfully.")
-
-def renew_dhcp(interface):
-    """Renew DHCP lease for the interface."""
-    print(f"[*] Renewing DHCP lease for {interface}...")
-    _, stderr = run_command(f"sudo dhclient -r {interface} && sudo dhclient {interface}")
-    if stderr:
-        print(f"[!] Error renewing DHCP lease for {interface}: {stderr}")
-    else:
-        print(f"[+] DHCP lease renewed for {interface}.")
-
-def check_rf_kill():
-    """Check and unblock RF-kill if it's blocking the wlan interfaces."""
-    print("[*] Checking RF-kill status...")
-    stdout, stderr = run_command("rfkill list all")
-    if stdout:
-        if "Wireless LAN" in stdout and "blocked: yes" in stdout:
-            print("[!] Wireless LAN is blocked by RF-kill. Unblocking...")
-            run_command("sudo rfkill unblock wifi")
-            print("[+] Wireless LAN unblocked.")
-        else:
-            print("[+] Wireless LAN is not blocked.")
-    else:
-        print("[!] Error checking RF-kill status.")
-
-def disable_airplane_mode():
-    """Disable airplane mode if it's enabled."""
-    print("[*] Checking for Airplane mode...")
-    stdout, _ = run_command("rfkill list all | grep -i 'Airplane Mode: on'")
-    if stdout:
-        print("[*] Disabling Airplane mode...")
-        run_command("rfkill unblock all")
-        print("[+] Airplane mode disabled.")
-
-def wait_for_wlan(timeout=120, interval=5):
-    """Wait for a wlan interface to be detected, with a timeout."""
-    print(f"[*] Waiting for wlan interfaces to be detected (timeout: {timeout} seconds)...")
-    elapsed_time = 0
-    while elapsed_time < timeout:
-        interfaces = check_wlan_interfaces()
-        if interfaces:
-            print(f"[+] Detected wlan interface(s): {', '.join(interfaces)}")
-            return interfaces
-        time.sleep(interval)
-        elapsed_time += interval
-        print(f"[*] Retrying... {elapsed_time}/{timeout} seconds")
+def fix_wlan(interface="wlan0"):
+    """Fix WLAN issues by handling RF-kill, airplane mode, and interface settings."""
+    log_and_print(f"[*] Starting WLAN fix for {interface}...")
     
-    print("[!] No wlan interfaces detected after waiting. Exiting.")
-    return None
-
-def fix_wlan_issues():
-    """Fix all wlan issues by resetting interfaces, drivers, and services."""
-    print("[*] Fixing wlan issues...")
-
- 
-    check_rf_kill()
-
- 
-    disable_airplane_mode()
-
-   
-    interfaces = check_wlan_interfaces()
-    if not interfaces:
-        print("[!] No wlan interfaces found. Reloading Wi-Fi driver...")
-        reload_wifi_driver()
-        interfaces = wait_for_wlan() 
-
-    if not interfaces:
-        print("[!] No wlan interfaces detected after driver reload. Exiting.")
+    if not check_rf_kill():
         return
-
-
-    for interface in interfaces:
-        print(f"[*] Working on interface {interface}...")
-
-        bring_interface_down(interface)
-        bring_interface_up(interface)
-
-
-        set_monitor_mode(interface)
-
-
-        renew_dhcp(interface)
-
-
-    restart_network_manager()
-
-    print("[+] All wlan interfaces have been fixed and set to monitor mode for wifite.")
+    if not check_airplane_mode():
+        return
+    if not bring_interface_down(interface):
+        return
+    if not bring_interface_up(interface):
+        return
+    if not set_monitor_mode(interface):
+        return
+    if not renew_dhcp_lease(interface):
+        log_and_print(f"[!] Continuing despite DHCP lease failure.")
+    
+    if not restart_network_manager():
+        return
+    
+    log_and_print(f"[+] WLAN interface {interface} has been fixed and set to monitor mode.")
 
 if __name__ == "__main__":
-    fix_wlan_issues()
+    fix_wlan("wlan0")
