@@ -47,7 +47,7 @@ Starting the Application
 Once the application is running, it will start monitoring your Wi-Fi networks for attacks. To interact with the tool:
 
 Accessing the Web Interface
-Open your web browser and navigate to [http://<your_local_ip>:5000](http://192.168.0.100:5000) to access the YuB Protect web interface make sure is your local ip from kali linux.
+Open your web browser and navigate to [http://192.168.0.100:5000](http://192.168.0.100:5000) to access the YuB Protect web interface make sure is your local ip from kali linux.
 
 Monitoring Logs
 Real-time logs of detected attacks are provided, including details such as the type of attack, timestamp, and the affected network.
