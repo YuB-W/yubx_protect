@@ -1,6 +1,6 @@
 # YuB Protect
 
-![YuB Protect Logo]([path/to/logo.png](https://avatars.githubusercontent.com/u/128683039?s=400&u=1d1a63380f3f4f54644b796db894f91ebd478eab&v=4))  <!-- Optional: Replace with your logo or remove this line -->
+![YuB Protect Logo]([yub.png))  <!-- Optional: Replace with your logo or remove this line -->
 
 **YuB Protect** is a Python-based application designed for effective Wi-Fi monitoring and protection against various security threats. This project enables users to detect, respond to, and log incidents of Wi-Fi attacks in real-time, ensuring the security of their wireless networks.
 
