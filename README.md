@@ -13,10 +13,7 @@ YuB Protect is a powerful, Python-based application designed exclusively for Kal
 - [About](#about)
 - [Features](#features)
 - [Installation](#installation)
-- [Usage](#usage)
-- [Files](#files)
-- [License](#license)
-- [Contact](#contact)
+- [Features](#Features)
 
 ## About
 
