@@ -31,7 +31,7 @@ import time
 import logging
 from datetime import datetime, timedelta
 from scapy.all import *
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, current_app
 from scapy.all import Dot11Deauth, sniff, RadioTap, Dot11, Dot11Auth, sendp, Dot11Beacon
 from playsound import playsound
 import random
@@ -196,16 +196,21 @@ def auto_protect():
 def protect_wifi():
     """Protect the last attacked Wi-Fi network."""
     global bssid_under_attack
+
     try:
         if bssid_under_attack:
             iface = 'wlan0'
             if iface:
-                threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
+                # Create a thread to start the authentication DoS attack
+                threading.Thread(target=start_auth_dos_with_context, args=(bssid_under_attack, iface)).start()
                 return jsonify({'status': 'success', 'message': f'Protection started for BSSID {bssid_under_attack}'}), 200
             return jsonify({'status': 'error', 'message': 'Interface not provided'}), 400
+        
         return jsonify({'status': 'error', 'message': 'No attack detected'}), 400
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
+
 
 ALERT_COOLDOWN = 15
 last_alert_time = 0
@@ -311,25 +316,26 @@ def start_sniffing_thread(iface_name):
     """Start packet sniffing in a separate thread."""
     global sniff_thread
 
-    def sniff_loop():
-        while True:
-            try:
-                if check_and_fix_interface(iface_name):
-                    sniff_thread = threading.Thread(target=sniff, kwargs={'iface': iface_name, 'prn': detect_attack_patterns, 'store': 0})
-                    sniff_thread.daemon = True
-                    sniff_thread.start()
-                    sniff_thread.join()
-                else:
-                    logger.error(f"Failed to fix interface {iface_name}. Retrying in 1 seconds.")
-            except Exception as e:
-                logger.error(f"Error during sniffing: {e}")
-            time.sleep(1)
+    def sniff_loop(app_context):
+        with app_context:  # Use the passed app context
+            while True:
+                try:
+                    if check_and_fix_interface(iface_name):
+                        sniff_thread = threading.Thread(target=sniff, kwargs={'iface': iface_name, 'prn': detect_attack_patterns, 'store': 0})
+                        sniff_thread.daemon = True
+                        sniff_thread.start()
+                        sniff_thread.join()
+                    else:
+                        logger.error(f"Failed to fix interface {iface_name}. Retrying in 1 second.")
+                except Exception as e:
+                    logger.error(f"Error during sniffing: {e}")
+                time.sleep(1)
 
-    sniff_thread = threading.Thread(target=sniff_loop)
+    app_context = app.app_context()  # Create application context
+    sniff_thread = threading.Thread(target=sniff_loop, args=(app_context,))
     sniff_thread.daemon = True
     sniff_thread.start()
     logger.info(f"Sniffing started on interface {iface_name}")
-    
 
 last_attack_time = {}
 
