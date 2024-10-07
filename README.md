@@ -1,9 +1,10 @@
-# YuB Protect
+# YuB Protect V2
 
 ![YuB Protect Logo](yub.png)
 
 
-# YuB Protect is optimized for Kali Linux, one of the most powerful penetration testing and network security operating systems. If you’re using YuB Protect on another Linux distribution, some features may need further adjustments to run smoothly.
+# YuB Protect 
+is optimized for Kali Linux, one of the most powerful penetration testing and network security operating systems. If you’re using YuB Protect on another Linux distribution, some features may need further adjustments to run smoothly.
 
 ![Kali Linux Focus](kali.png)
 
