@@ -74,6 +74,20 @@ def renew_dhcp(interface):
     else:
         print(f"[+] DHCP lease renewed for {interface}.")
 
+def check_rf_kill():
+    """Check and unblock RF-kill if it's blocking the wlan interfaces."""
+    print("[*] Checking RF-kill status...")
+    stdout, stderr = run_command("rfkill list all")
+    if stdout:
+        if "Wireless LAN" in stdout and "blocked: yes" in stdout:
+            print("[!] Wireless LAN is blocked by RF-kill. Unblocking...")
+            run_command("sudo rfkill unblock wifi")
+            print("[+] Wireless LAN unblocked.")
+        else:
+            print("[+] Wireless LAN is not blocked.")
+    else:
+        print("[!] Error checking RF-kill status.")
+
 def disable_airplane_mode():
     """Disable airplane mode if it's enabled."""
     print("[*] Checking for Airplane mode...")
@@ -103,34 +117,37 @@ def fix_wlan_issues():
     """Fix all wlan issues by resetting interfaces, drivers, and services."""
     print("[*] Fixing wlan issues...")
 
-    # Step 1: Disable Airplane mode if enabled
+ 
+    check_rf_kill()
+
+ 
     disable_airplane_mode()
 
-    # Step 2: Check available wlan interfaces
+   
     interfaces = check_wlan_interfaces()
     if not interfaces:
         print("[!] No wlan interfaces found. Reloading Wi-Fi driver...")
         reload_wifi_driver()
-        interfaces = wait_for_wlan()  # Wait for wlan to appear
+        interfaces = wait_for_wlan() 
 
     if not interfaces:
         print("[!] No wlan interfaces detected after driver reload. Exiting.")
         return
 
-    # Step 3: Bring interfaces up and set monitor mode
+
     for interface in interfaces:
         print(f"[*] Working on interface {interface}...")
 
         bring_interface_down(interface)
         bring_interface_up(interface)
 
-        # Set monitor mode for wifite compatibility
+
         set_monitor_mode(interface)
 
-        # Renew DHCP lease if needed
+
         renew_dhcp(interface)
 
-    # Step 4: Restart Network Manager
+
     restart_network_manager()
 
     print("[+] All wlan interfaces have been fixed and set to monitor mode for wifite.")
