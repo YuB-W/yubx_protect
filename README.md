@@ -15,9 +15,6 @@ YuB Protect is a powerful, Python-based application designed exclusively for Kal
 - [Installation](#installation)
 - [Usage](#usage)
 - [Files](#files)
-- [Configuration](#configuration)
-- [Audio Alerts](#audio-alerts)
-- [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
 
@@ -84,7 +81,7 @@ welcome.m4a: Welcome message sound upon application startup.
 These files can be customized by replacing them with your own audio files in the project directory.
 
 
-Contact
+## Contact
 For questions, issues, or feedback, feel free to reach out to the project maintainer:
 
 Name: [Yub-X]
