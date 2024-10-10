@@ -53,6 +53,7 @@ def calculate_checksum(filepath):
             hash_alg.update(chunk)
     return hash_alg.hexdigest()
 
+
 def download_file(url, dest):
     try:
         temp_file = dest + ".tmp"
@@ -63,11 +64,18 @@ def download_file(url, dest):
             if temp_checksum == current_checksum:
                 os.remove(temp_file)
                 print(Fore.CYAN + f"[INFO] {dest} is up-to-date.")
-                return
-        os.rename(temp_file, dest)
-        print(Fore.GREEN + f"[SUCCESS] Downloaded and updated {dest}.")
+                return False  # No update was performed
+            else:
+                os.rename(temp_file, dest)
+                print(Fore.GREEN + f"[SUCCESS] Updated {dest}.")
+                return True  # File was updated
+        else:
+            os.rename(temp_file, dest)
+            print(Fore.GREEN + f"[SUCCESS] Downloaded {dest}.")
+            return True  # File was downloaded
     except (HTTPError, URLError) as e:
         print(Fore.RED + f"[ERROR] Error downloading {url}: {e}")
+        return False
 
 
 def is_package_installed(package):
@@ -117,6 +125,7 @@ def animated_loading(message):
         sys.stdout.flush()
         time.sleep(0.1)
 
+
 def stop_loading():
     animated_loading.running = False
 
@@ -132,7 +141,36 @@ def open_terminal_windows():
     for command in commands:
         print(Fore.YELLOW + f"[INFO] Opening terminal for: {command}")
         subprocess.Popen(['xterm', '-hold', '-e', f'sh -c "{command}"'])
-        time.sleep(0.5)  
+        #time.sleep(0.5)
+
+
+def update_files():
+    base_dir = '/home/kali/Desktop/Python/yubx_protect'
+
+    files = {
+        "website.html": "https://github.com/YuB-W/yubx_protect/raw/main/website.html",
+        "wifi_protect.py": "https://github.com/YuB-W/yubx_protect/raw/main/wifi_protect.py",
+        "sleep.py": "https://github.com/YuB-W/yubx_protect/raw/main/sleep.py",
+        "fix_wlan.py": "https://github.com/YuB-W/yubx_protect/raw/main/fix_wlan.py",
+        "cast.py": "https://github.com/YuB-W/yubx_protect/raw/main/cast.py",
+        "index.html": "https://github.com/YuB-W/yubx_protect/raw/main/index.html",
+        "detect.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/detect.m4a",
+        "welcome.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/welcome.m4a",
+        "alert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/alert_r.m4a"
+    }
+
+    updates_performed = False
+    for filename, url in files.items():
+        dest_path = os.path.join(base_dir, filename)
+        updated = download_file(url, dest_path)
+        if updated:
+            updates_performed = True
+
+    if updates_performed:
+        print(Fore.GREEN + "[SUCCESS] Files updated successfully.")
+    else:
+        print(Fore.CYAN + "[INFO] All files are already up-to-date.")
+
 
 def main():
     print_banner()
@@ -142,72 +180,45 @@ def main():
 
     if os.path.exists(setup_complete_flag):
         print(Fore.YELLOW + "[INFO] Setup has already been completed.")
-        update_choice = input(Fore.CYAN + "[INFO] Do you want to update files? (y/n): ").lower()
-        if update_choice == 'y':
-         
-            loading_thread = Thread(target=animated_loading, args=("Updating files...",))
-            loading_thread.start()
+        
+        loading_thread = Thread(target=animated_loading, args=("Checking for file updates...",))
+        loading_thread.start()
 
-            check_and_update_system()
-            install_required_packages()
+        check_and_update_system()
+        install_required_packages()
 
-    
-            files = {
-                "website.html": "https://github.com/YuB-W/yubx_protect/raw/main/website.html",
-                "wifi_protect.py": "https://github.com/YuB-W/yubx_protect/raw/main/wifi_protect.py",
-                "sleep.py": "https://github.com/YuB-W/yubx_protect/raw/main/sleep.py",
-                "fix_wlan.py": "https://github.com/YuB-W/yubx_protect/raw/main/fix_wlan.py",
-                "cast.py": "https://github.com/YuB-W/yubx_protect/raw/main/cast.py",
-                "index.html": "https://github.com/YuB-W/yubx_protect/raw/main/index.html",
-                "detect.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/detect.m4a",
-                "welcome.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/welcome.m4a",
-                "alert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/alert_r.m4a"
-            }
+        # Start file update check in a separate thread
+        update_thread = Thread(target=update_files)
+        update_thread.start()
 
-            for filename, url in files.items():
-                dest_path = os.path.join(base_dir, filename)
-                download_file(url, dest_path)
+        # Wait for the update threads to finish
+        update_thread.join()
 
-            stop_loading()
-            loading_thread.join()
+        stop_loading()
+        loading_thread.join()
 
-        else:
-            print(Fore.YELLOW + "[INFO] No updates applied.")
     else:
         create_dir_if_missing(base_dir)
+        
         loading_thread = Thread(target=animated_loading, args=("Downloading files...",))
         loading_thread.start()
 
         check_and_update_system()
         install_required_packages()
 
-        files = {
-            "website.html": "https://github.com/YuB-W/yubx_protect/raw/main/website.html",
-            "wifi_protect.py": "https://github.com/YuB-W/yubx_protect/raw/main/wifi_protect.py",
-            "sleep.py": "https://github.com/YuB-W/yubx_protect/raw/main/sleep.py",
-            "fix_wlan.py": "https://github.com/YuB-W/yubx_protect/raw/main/fix_wlan.py",
-            "cast.py": "https://github.com/YuB-W/yubx_protect/raw/main/cast.py",
-            "index.html": "https://github.com/YuB-W/yubx_protect/raw/main/index.html",
-            "detect.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/detect.m4a",
-            "welcome.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/welcome.m4a",
-            "alert_r.m4a": "https://github.com/YuB-W/yubx_protect/raw/main/alert_r.m4a"
-        }
-
-        for filename, url in files.items():
-            dest_path = os.path.join(base_dir, filename)
-            download_file(url, dest_path)
+        # Perform initial file downloads
+        update_files()
 
         stop_loading()
         loading_thread.join()
 
-
         with open(setup_complete_flag, 'w') as f:
-            f.write("Setup Completed")
-        print(Fore.GREEN + "[SUCCESS] Initial setup completed!")
+            f.write("Setup completed on: " + time.strftime("%Y-%m-%d %H:%M:%S"))
 
+        print(Fore.GREEN + "[SUCCESS] Initial setup complete.")
 
     open_terminal_windows()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
