@@ -222,7 +222,7 @@ def detect_attack_patterns(packet):
         current_time = time.time()
         if bssid not in [attack[2] for attack in attacks["deauth"]]:
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
-            logger.info(f"Deauthentication attack detected: {bssid} with ESSID: {essid_rssi_data['essid']}")
+            logger.info(f"Deauthentication attack detected: {bssid}")
             if a_p:
                 threading.Thread(target=protect_wifi).start()
             if current_time - last_alert_time < ALERT_COOLDOWN:
