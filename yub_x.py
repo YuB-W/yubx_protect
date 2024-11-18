@@ -132,11 +132,11 @@ def stop_loading():
 
 def open_terminal_windows():
     commands = [
-        'sudo mousepad /home/kali/Desktop/Python/yubx_protect/website.html',
-        'sudo mousepad /home/kali/Desktop/Python/yubx_protect/index.html',
-        'sudo python3 /home/kali/Desktop/Python/yubx_protect/sleep.py',
-        'sudo python3 /home/kali/Desktop/Python/yubx_protect/cast.py',
-        'sudo python3 /home/kali/Desktop/Python/yubx_protect/wifi_protect.py'
+        'sudo mousepad website.html',
+        'sudo mousepad index.html',
+        'sudo python3 sleep.py',
+        'sudo python3 cast.py',
+        'sudo python3 wifi_protect.py'
     ]
     for command in commands:
         print(Fore.YELLOW + f"[INFO] Opening terminal for: {command}")
@@ -145,7 +145,7 @@ def open_terminal_windows():
 
 
 def update_files():
-    base_dir = '/home/kali/Desktop/Python/yubx_protect'
+    base_dir = 'yubx_protect'
 
     files = {
         "website.html": "https://github.com/YuB-W/yubx_protect/raw/main/website.html",
@@ -175,7 +175,7 @@ def update_files():
 def main():
     print_banner()
 
-    base_dir = '/home/kali/Desktop/Python/yubx_protect'
+    base_dir = 'yubx_protect'
     setup_complete_flag = '/home/kali/.yubx_setup_complete'
 
     if os.path.exists(setup_complete_flag):
