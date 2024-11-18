@@ -66,7 +66,7 @@ file_path = "alerts_history.json"
 delay_seconds = 5  # Delay in seconds between each fetch and send operation
 
 
-with open('/home/kali/Desktop/Python/yubx_protect/website.html', 'r') as file:
+with open('website.html', 'r') as file:
     MAP_HTML = file.read()
 
 @app.route('/clear_logs', methods=['POST'])
@@ -235,7 +235,7 @@ def detect_attack_patterns(packet):
             if current_time - last_alert_time < ALERT_COOLDOWN:
                 return  
 
-            threading.Thread(target=playsound, args=('/home/kali/Desktop/Python/yubx_protect/detect.m4a',)).start()
+            threading.Thread(target=playsound, args=('detect.m4a',)).start()
             last_alert_time = current_time
     
         
@@ -474,12 +474,12 @@ def main():
             if new_data is not None:
                 if update_alert_data(file_path, new_data):
                     logger.info("[+] Detected new alerts")
-                    threading.Thread(target=playsound, args=('/home/kali/Desktop/Python/yubx_protect/alert_r.m4a',)).start()
+                    threading.Thread(target=playsound, args=('alert_r.m4a',)).start()
             time.sleep(delay_seconds)
     
     fetch_thread = Thread(target=data_fetcher, daemon=True)
     fetch_thread.start()
-    threading.Thread(target=playsound, args=('/home/kali/Desktop/Python/yubx_protect/welcome.m4a',)).start()
+    threading.Thread(target=playsound, args=('welcome.m4a',)).start()
     app.run(debug=False, host='0.0.0.0', port=5000)
 
 if __name__ == "__main__":
