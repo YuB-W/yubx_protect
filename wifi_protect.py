@@ -472,8 +472,7 @@ def main():
     if ip_address is None:
         print("Error: IP address could not be retrieved")
     else:
-        print(f"\nWebsite: {ip_address}:5000\n")
-	print("YuB-X: Ready!")
+        print(f"YuB-X: Ready!\nWebsite: {ip_address}:5000\n")
 	    
     global sniff_thread
     sniff_thread = threading.Thread(target=start_sniffing_thread, args=('wlan0',))
