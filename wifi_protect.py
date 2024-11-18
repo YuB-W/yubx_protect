@@ -59,7 +59,6 @@ attacks = {
 played_alerts = set()
 sniff_thread = None
 bssid_under_attack = None
-previous_bssid = ""
 app = Flask(__name__)
 
 
@@ -199,21 +198,20 @@ def protect_wifi():
             iface = 'wlan0'
             
             if iface:
-                threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
-                
-                logger.info(f"Protection started for BSSID {bssid_under_attack} on interface {iface}")
-                return jsonify({'status': 'success', 'message': f'Protection started for BSSID {bssid_under_attack}'}), 200
+                with app.app_context():
+                    threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
+                    return jsonify({'status': 'success', 'message': f'Protection started for BSSID {bssid_under_attack}'}), 200
             else:
                 logger.error("Interface not provided")
                 return jsonify({'status': 'error', 'message': 'Interface not provided'}), 400
-        
-        # Handle case where no attack has been detected
+ 
         logger.warning("No attack detected. Protection not started.")
         return jsonify({'status': 'error', 'message': 'No attack detected'}), 400
 
     except Exception as e:
         logger.exception("Error while starting protection.")
         return jsonify({'status': 'error', 'message': str(e)}), 400
+
 
 def detect_attack_patterns(packet):
     """Detect attack patterns and start auto protection."""
@@ -225,18 +223,18 @@ def detect_attack_patterns(packet):
 
         if bssid not in [attack[2] for attack in attacks["deauth"]]:
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
-            bssid_under_attack = bssid 
+            bssid_under_attack = bssid  
 
             logger.info(f"Deauthentication attack detected: {bssid_under_attack}")
-                       
-            if bssid_under_attack and a_p: 
-                threading.Thread(target=protect_wifi).start()   
 
+            if a_p:
+                threading.Thread(target=protect_wifi).start()
+                
             if current_time - last_alert_time < ALERT_COOLDOWN:
-                return 
+                return
 
-            threading.Thread(target=playsound, args=('detect.m4a',)).start() 
-            last_alert_time = current_time   
+            threading.Thread(target=playsound, args=('detect.m4a',)).start()
+            last_alert_time = current_time 
         
 @app.route('/')
 def index():
@@ -337,12 +335,14 @@ def start_sniffing_thread(iface_name):
     logger.info(f"Sniffing started on interface {iface_name}")
 
 last_attack_time = {}
+attack_time_lock = threading.Lock()
 
 def start_auth_dos(bssid, iface_name):
     """Perform Authentication DoS attack by sending fake authentication frames."""
-    
+
     def get_random_mac():
-        return ':'.join([''.join(random.choices(string.hexdigits, k=2)) for _ in range(6)]).upper()
+        """Generate a random MAC address."""
+        return ':'.join([''.join(random.choices('0123456789ABCDEF', k=2)) for _ in range(6)]).upper()
 
     def send_auth_frame():
         """Send a fake authentication frame."""
@@ -354,13 +354,17 @@ def start_auth_dos(bssid, iface_name):
             logging.error(f"Error sending frame: {e}")
 
     current_time = time.time()
-    if bssid in last_attack_time and (current_time - last_attack_time[bssid]) < 20:
-        logging.info(f"Skipping Auth DoS on BSSID {bssid}. Attack already performed recently.")
-        return
+    with attack_time_lock:
+        if bssid in last_attack_time and (current_time - last_attack_time[bssid]) < 20:
+            logging.info(f"Skipping Auth DoS on BSSID {bssid}. Attack already performed recently.")
+            return
 
-    num_threads = 350  
+        last_attack_time[bssid] = current_time
+
+    num_threads = 350  # Number of threads for the attack
 
     logging.info(f"Starting Auth DoS on BSSID {bssid} with {num_threads} threads...")
+
     threads = []
     for _ in range(num_threads):
         thread = threading.Thread(target=send_auth_frame, daemon=True)
@@ -369,12 +373,10 @@ def start_auth_dos(bssid, iface_name):
 
     for thread in threads:
         thread.join()
-    
-    last_attack_time[bssid] = current_time
-    logging.info(f"Auth DoS on BSSID {bssid} completed.")
-   
 
-    
+    logging.info(f"Auth DoS on BSSID {bssid} completed.")
+
+
 def fetch_data(url):
     """Fetch data from the specified URL and return the JSON response."""
     try:
