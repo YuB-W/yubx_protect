@@ -157,11 +157,7 @@ def current_alert():
                     essid = essid_rssi_data["essid"]
                     rssi = essid_rssi_data["rssi"]
                     source = essid_rssi_data["source"]
-
-                    # Determine band if available
                     band = '5GHz' if '5GHz' in essid else '2.4GHz'
-
-                    # Calculate proximity and location
                     proximity, distance = determine_attacker_proximity([rssi], band)
                     location, _ = determine_attacker_location([rssi], band)
                     message = f"{latest_attack[1]} from {source} detected:\n BSSID: {latest_attack[2]}\n ESSID: {essid}\n RSSI: {rssi} dBm\n {proximity}\n Distance: {distance:.2f} meters\n Location: {location}"
