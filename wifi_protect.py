@@ -44,8 +44,11 @@ import json
 import numpy as np
 
 logging.basicConfig(filename='wifi_monitor.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
+ALERT_COOLDOWN = 15
+last_alert_time = 0
 
 attacks = {
     "deauth": [],
@@ -55,7 +58,7 @@ attacks = {
 }
 played_alerts = set()
 sniff_thread = None
-bssid_under_attack = ""
+bssid_under_attack = None
 previous_bssid = ""
 app = Flask(__name__)
 
@@ -194,19 +197,23 @@ def protect_wifi():
     try:
         if bssid_under_attack:
             iface = 'wlan0'
+            
             if iface:
                 threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
+                
+                logger.info(f"Protection started for BSSID {bssid_under_attack} on interface {iface}")
                 return jsonify({'status': 'success', 'message': f'Protection started for BSSID {bssid_under_attack}'}), 200
-            return jsonify({'status': 'error', 'message': 'Interface not provided'}), 400
+            else:
+                logger.error("Interface not provided")
+                return jsonify({'status': 'error', 'message': 'Interface not provided'}), 400
         
+        # Handle case where no attack has been detected
+        logger.warning("No attack detected. Protection not started.")
         return jsonify({'status': 'error', 'message': 'No attack detected'}), 400
 
     except Exception as e:
+        logger.exception("Error while starting protection.")
         return jsonify({'status': 'error', 'message': str(e)}), 400
-
-
-ALERT_COOLDOWN = 15
-last_alert_time = 0
 
 def detect_attack_patterns(packet):
     """Detect attack patterns and start auto protection."""
@@ -218,19 +225,18 @@ def detect_attack_patterns(packet):
 
         if bssid not in [attack[2] for attack in attacks["deauth"]]:
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
-            bssid_under_attack = bssid  # Update the global variable with the last attacked BSSID
+            bssid_under_attack = bssid 
 
             logger.info(f"Deauthentication attack detected: {bssid_under_attack}")
                        
-            if a_p:
-               threading.Thread(target=protect_wifi).start()   
-               
-            if current_time - last_alert_time < ALERT_COOLDOWN:
-                return  
+            if bssid_under_attack and a_p: 
+                threading.Thread(target=protect_wifi).start()   
 
-            threading.Thread(target=playsound, args=('detect.m4a',)).start()
-            last_alert_time = current_time
-    
+            if current_time - last_alert_time < ALERT_COOLDOWN:
+                return 
+
+            threading.Thread(target=playsound, args=('detect.m4a',)).start() 
+            last_alert_time = current_time   
         
 @app.route('/')
 def index():
