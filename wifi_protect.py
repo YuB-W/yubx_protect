@@ -200,7 +200,7 @@ def protect_wifi():
             if iface:
                 with app.app_context():
                     threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
-                    return jsonify({'status': 'success', 'message': f'Protection started for BSSID {bssid_under_attack}'}), 200
+                    return jsonify({'status': 'success', 'message': f'protected'}), 200
             else:
                 logger.error("Interface not provided")
                 return jsonify({'status': 'error', 'message': 'Interface not provided'}), 400
@@ -220,8 +220,7 @@ def detect_attack_patterns(packet):
     if packet.haslayer(Dot11Deauth):
         bssid = packet[Dot11].addr2 
         current_time = time.time()
-        essid_rssi_data = extract_essid_from_bssid(bssid)
-        if bssid not in [attack[2] for attack in attacks["deauth"]] and essid_rssi_data and essid_rssi_data.get("essid"):
+        if bssid not in [attack[2] for attack in attacks["deauth"]]:
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
             logger.info(f"Deauthentication attack detected: {bssid} with ESSID: {essid_rssi_data['essid']}")
             if a_p:
