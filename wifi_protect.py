@@ -43,7 +43,6 @@ import requests
 import json
 import numpy as np
 
-# Configure logging
 logging.basicConfig(filename='wifi_monitor.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger()
 
@@ -63,7 +62,7 @@ app = Flask(__name__)
 
 url = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
 file_path = "alerts_history.json"
-delay_seconds = 5  # Delay in seconds between each fetch and send operation
+delay_seconds = 5 
 
 
 with open('website.html', 'r') as file:
@@ -85,7 +84,6 @@ def average_rssi(rssi_values):
     return np.mean(rssi_values)
 
 def signal_strength_decay(rssi, band='2.4GHz'):
-    # Adjust decay factor for 5GHz if necessary
     decay_factor = 2 if band == '5GHz' else 3
     return 10 ** ((-rssi - 30) / (10 * decay_factor))
 
@@ -197,8 +195,7 @@ def protect_wifi():
         if bssid_under_attack:
             iface = 'wlan0'
             if iface:
-                # Create a thread to start the authentication DoS attack
-                threading.Thread(target=start_auth_dos_with_context, args=(bssid_under_attack, iface)).start()
+                threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
                 return jsonify({'status': 'success', 'message': f'Protection started for BSSID {bssid_under_attack}'}), 200
             return jsonify({'status': 'error', 'message': 'Interface not provided'}), 400
         
@@ -223,7 +220,7 @@ def detect_attack_patterns(packet):
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
             bssid_under_attack = bssid  # Update the global variable with the last attacked BSSID
 
-            logger.info(f"Deauthentication attack detected: {bssid}")
+            logger.info(f"Deauthentication attack detected: {bssid_under_attack}")
                        
             if a_p:
                threading.Thread(target=protect_wifi).start()   
@@ -431,20 +428,18 @@ def get_private_ip():
     import socket
     import ipaddress
     try:
-        # Get all addresses associated with the hostname
+    
         hostname = socket.gethostname()
         ip_addresses = socket.gethostbyname_ex(hostname)[2]
 
-        # Filter for private IP addresses (192.x.x.x, 10.x.x.x, etc.)
         for ip in ip_addresses:
             ip_obj = ipaddress.ip_address(ip)
             if ip_obj.is_private and not ip_obj.is_loopback:
                 return str(ip_obj)
-        
-        # Fallback: Try getting the default network interface IP (e.g., eth0, wlan0)
+
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            # Connecting to a public IP to get the default network interface
-            s.connect(('8.8.8.8', 1))  # This IP is not actually contacted
+ 
+            s.connect(('8.8.8.8', 1))
             return s.getsockname()[0]
 
     except Exception as e:
@@ -463,7 +458,6 @@ def main():
     global sniff_thread
     sniff_thread = threading.Thread(target=start_sniffing_thread, args=('wlan0',))
     sniff_thread.start()
-        # Start data fetching and updating in a separate thread
     def data_fetcher():
         while True:
             new_data = fetch_data(url)
