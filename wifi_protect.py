@@ -215,26 +215,21 @@ def protect_wifi():
 
 def detect_attack_patterns(packet):
     """Detect attack patterns and start auto protection."""
-    global attacks, bssid_under_attack, last_alert_time
+    global attacks, last_alert_time
 
     if packet.haslayer(Dot11Deauth):
-        bssid = packet[Dot11].addr2
+        bssid = packet[Dot11].addr2 
         current_time = time.time()
-
-        if bssid not in [attack[2] for attack in attacks["deauth"]]:
+        essid_rssi_data = extract_essid_from_bssid(bssid)
+        if bssid not in [attack[2] for attack in attacks["deauth"]] and essid_rssi_data and essid_rssi_data.get("essid"):
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
-            bssid_under_attack = bssid  
-
-            logger.info(f"Deauthentication attack detected: {bssid_under_attack}")
-
+            logger.info(f"Deauthentication attack detected: {bssid} with ESSID: {essid_rssi_data['essid']}")
             if a_p:
                 threading.Thread(target=protect_wifi).start()
-                
             if current_time - last_alert_time < ALERT_COOLDOWN:
                 return
-
             threading.Thread(target=playsound, args=('detect.m4a',)).start()
-            last_alert_time = current_time 
+            last_alert_time = current_time
         
 @app.route('/')
 def index():
