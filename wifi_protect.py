@@ -42,6 +42,9 @@ import struct
 import requests
 import json
 import numpy as np
+import socket
+import ipaddress
+
 
 logging.basicConfig(filename='wifi_monitor.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -463,7 +466,7 @@ def get_private_ip():
 
     except Exception as e:
         print(f"Error retrieving IP address: {e}")
-        return None 
+        return "127.0.0.1" 
     
 def main():
     """Main function to run the Flask app."""
