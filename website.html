@@ -5,46 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wi-Fi Monitoring System</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-     <style>
+    <style>
         body {
             margin: 0;
             font-family: Arial, sans-serif;
             background-color: #000;
             color: #0f0;
-        }
-        #map {
-            height: 100vh;
-            width: 100%;
-        }
-        .leaflet-popup-content {
-            color: #000;
-            background-color: #0f0;
-        }
-        .leaflet-popup-content-wrapper {
-            background: #0f0;
-        }
-        .leaflet-popup-tip {
-            background: #0f0;
-        }
-        .leaflet-control-zoom {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid #0f0;
-        }
-        .leaflet-control-attribution {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid #0f0;
-        }
-        body {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: #0a0a0a;
-            color: #00ff00;
-            margin: 0;
-            padding: 0;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
         }
+
         #map {
             height: 60vh;
             width: 100%;
@@ -53,6 +25,7 @@
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
             margin: 10px 0;
         }
+
         #controls {
             display: flex;
             justify-content: center;
@@ -61,6 +34,7 @@
             background-color: #1a1a1a;
             border-bottom: 2px solid #00ff00;
         }
+
         #controls button {
             background-color: #333;
             color: #00ff00;
@@ -71,13 +45,16 @@
             font-size: 16px;
             transition: background-color 0.3s, transform 0.2s;
         }
+
         #controls button:hover {
             background-color: #555;
             transform: scale(1.05);
         }
+
         #controls button:active {
             transform: scale(0.95);
         }
+
         #logs {
             background-color: #1a1a1a;
             color: #00ff00;
@@ -85,10 +62,11 @@
             margin: 10px;
             border-radius: 5px;
             font-size: 14px;
-            border: 1px solid #00ff00;
+            border: 1px solid #00ff0086;
             max-height: 20vh;
             overflow-y: auto;
         }
+
         .alert {
             padding: 8px;
             margin: 8px;
@@ -97,23 +75,98 @@
             font-weight: bold;
             background-color: #ff0000;
             color: #000000;
-            
             display: none; /* Initially hidden */
         }
+
         .alert.success {
             background-color: #00ff00;
             color: #000000;
         }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+
+        /* Style for the alert popup */
+        .alert-popup {
+            background-color: #1a1a1a;
+            color: #e1e1e1;
+            font-family: Arial, sans-serif;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.4);
+            max-width: 300px;
+            animation: slideIn 0.5s ease-out;
         }
-        @keyframes flicker {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
+
+        .alert-header {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #f44336; /* Red header for urgency */
         }
+
+        .alert-body {
+            font-size: 14px;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .alert-date {
+            font-size: 12px;
+            color: #ffffff;
+        }
+
+        .alert-footer {
+            font-size: 12px;
+            text-align: right;
+            color: #ffffff;
+        }
+
+        .alert-footer-text {
+            color: #f44336; /* Match footer color to header */
+        }
+
+        /* Add hover effect for the popup */
+        .alert-popup:hover {
+            background-color: #333;
+            box-shadow: 0px 0px 20px rgba(255, 0, 0, 0.719);
+        }
+
+        /* Animation for alert markers when a popup is opened */
+        .leaflet-popup {
+            background-color: #1a1a1a;
+            animation: fadeInPopup 0.4s ease-out;
+        }
+
+        .leaflet-popup-tip {
+            background-color: #1a1a1a;
+            color: #e1e1e1;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background-color: #1a1a1a;
+            color: #e1e1e1;
+        }
+
+        @keyframes fadeInPopup {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -145,8 +198,6 @@
 
         let targetMarker;
 
-     
-        // Function to zoom to a target location with animation
         function zoomToTarget(info) {
             map.flyTo([32.05665727536159, 34.758242349151836], 18, {
                 duration: 1, // Duration of the zoom animation in seconds
@@ -157,7 +208,6 @@
                 targetMarker.remove(); // Remove existing target marker
             }
 
-            // Add target marker to map
             targetMarker = L.marker([32.05665727536159, 34.758242349151836], { icon: targetIcon }).addTo(map);
             targetMarker.bindPopup(`
                 <div style="font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000000; background-color: #00ff00; border: 1px solid #000000; padding: 10px; border-radius: 6px; box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.3);">
@@ -173,13 +223,13 @@
         }
 
         function zoomToMap() {
-            map.flyTo([32.05665727536159, 34.758242349151836], 12, {
+            map.flyTo([32.05665727536159, 34.758242349151836], 5, {
                 duration: 1, // Duration of the zoom animation in seconds
                 animate: true
             });
         }
         zoomToMap();
-        // Function to handle alert updates with animations
+
         function updateAlert() {
             fetch('/current_alert')
                 .then(response => response.json())
@@ -190,15 +240,9 @@
                         showAlert(data.alert.message, data.alert.type);
                         setTimeout(() => {
                             //zoomToMap();
-                          //  if (targetMarker) {
-                           //     targetMarker.remove(); // Remove the marker when zooming out
-                           // }
-                        }, 10000); // Zoom back after 8 seconds
+                        }, 10000); // Zoom back after 10 seconds
                     } else {
                         hideAlert(); // Hide alert if no attack is detected
-                        //if (targetMarker) {
-                       //     targetMarker.remove(); // Remove the marker if no alert
-                       // }
                     }
                 })
                 .catch(error => {
@@ -282,6 +326,7 @@
                 })
                 .catch(error => console.error('Error:', error));
         }
+
         function updateLogs() {
             fetch('/logs')
                 .then(response => response.json())
@@ -297,72 +342,74 @@
                     console.error('Error:', error);
                     showAlert('The System is Offline');
                 });
+        }
+        const cityCoordinates = {};
+const alertMarkers = {};  // Store markers keyed by city name
+
+async function displayAlerts(alerts) {
+    if (!alerts.length) return;
+
+    let firstAlertCoords = null;
+    let firstAlertMarker = null;
+
+    for (const alert of alerts) {
+        const city = alert.data;
+
+        let coords = cityCoordinates[city];
+        if (!coords) {
+            coords = await fetchCoordinates(city);
+            if (coords) {
+                cityCoordinates[city] = coords;
+            } else {
+                coords = [32.0853, 34.7818]; // Fallback to Tel Aviv
             }
-    
-    
-            const cityCoordinates = {};
-            const alertMarkers = {};  // Store markers keyed by city name
+        }
 
-            async function displayAlerts(alerts) {
-                if (!alerts.length) return;
+        if (!alertMarkers[city]) {
+            alertMarkers[city] = L.marker(coords).addTo(map);
+        }
 
-                // Variable to store the coordinates and marker of the first alert
-                let firstAlertCoords = null;
-                let firstAlertMarker = null;
+        if (!firstAlertCoords) {
+            firstAlertCoords = coords;
+            firstAlertMarker = alertMarkers[city];
+        }
+        const alertDate = new Date(alert.alertDate).toLocaleString();
 
-                // Process and display each alert
-                for (const alert of alerts) {
-                    const city = alert.data;
+        // Enhanced popup with custom HTML structure and styles
+        alertMarkers[city].bindPopup(`
+            <div class="alert-popup">
+                <div class="alert-header">
+                        <strong>${alert.title}</strong>
+                    </div>
+                    <div class="alert-body">
+                        <p>${alert.data}</p>
+                        <small class="alert-date">${alertDate}</small>
+                    </div>
+                    <div class="alert-footer">
+                        <span class="alert-footer-text">Issued by system</span>
+                    </div>
+                </div>
+            `);
+        }
 
-                    // Check if the city's coordinates are already cached
-                    let coords = cityCoordinates[city];
-                    if (!coords) {
-                        // Fetch coordinates and cache them
-                        coords = await fetchCoordinates(city);
-                        if (coords) {
-                            cityCoordinates[city] = coords;
-                        } else {
-                            coords = [32.0853, 34.7818]; // Fallback to Tel Aviv
-                        }
-                    }
+        if (firstAlertCoords && firstAlertMarker) {
+            map.flyTo(firstAlertCoords, 16, {
+                animate: true,
+                duration: 4.5,  
+            });
 
-                    // Create or update the marker for this alert
-                    if (!alertMarkers[city]) {
-                        alertMarkers[city] = L.marker(coords).addTo(map);
-                    }
-
-                    // Set the first alert's coordinates and marker if not already set
-                    if (!firstAlertCoords) {
-                        firstAlertCoords = coords;
-                        firstAlertMarker = alertMarkers[city];
-                    }
-
-                    // Format alert date
-                    const alertDate = new Date(alert.alertDate).toLocaleString();
-
-                    // Bind the popup to the marker
-                    alertMarkers[city].bindPopup(`<b>${alert.title}</b><br>${alert.data}<br><small>${alertDate}</small>`);
-                }
-
-                // Smoothly zoom to the location of the first alert or a default view
-                if (firstAlertCoords && firstAlertMarker) {
-                    map.flyTo(firstAlertCoords, 16, {
-                        animate: true,
-                        duration: 4.5,  // Duration of the zoom animation
-                    });
-
-                    // Open the popup once the zoom is complete
-                    map.once('moveend', () => {
-                        firstAlertMarker.openPopup();
-                    });
-                } else {
-                    map.flyTo([32.0853, 34.7818], 14, { animate: true });
-                }
+            map.once('moveend', () => {
+                firstAlertMarker.openPopup();
+            });
+        } else {
+            map.flyTo([32.0853, 34.7818], 14, { animate: true });
             }
+        }
+
 
             // Function to fetch coordinates for a city using OpenStreetMap's Nominatim service
             async function fetchCoordinates(cityName) {
-                const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)},Israel&format=json&limit=1`;
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)},Israel&format=json&limit=100`;
 
                 try {
                     const response = await fetch(geocodeUrl);
@@ -378,9 +425,8 @@
                     return null;
                 }
             }
-
-            // Function to fetch alerts from the server
-            async function fetchAlerts() {
+        
+        async function fetchAlerts() {
                 try {
                     let response = await fetch('/alerts');
                     let alerts = await response.json();
@@ -390,26 +436,22 @@
                 }
             }
 
-
         document.addEventListener('DOMContentLoaded', (event) => {
-        function initialize() {
-           
-            setTimeout(() => {
-                fetchAlerts();
-                updateLogs();
-                updateAlert();
-                zoomToMap();
-            }, 2000);
+            function initialize() {
+                setTimeout(() => {
+                    fetchAlerts();
+                    updateLogs();
+                    updateAlert();
+                    zoomToMap();
+                }, 1000);
 
-            // Set intervals for periodic tasks
-            setInterval(fetchAlerts, 10000);  // Fetch alerts every 10 seconds
-            setInterval(updateLogs, 1000);    // Update logs every second
-            setInterval(updateAlert, 5000);   // Update alerts every 5 seconds
+                // Set intervals for periodic tasks
+                setInterval(fetchAlerts, 10000); 
+                setInterval(updateLogs, 1000);  
+                setInterval(updateAlert, 5000);  
             }
 
             initialize();
         });
-
     </script>
 </body>
-</html>
