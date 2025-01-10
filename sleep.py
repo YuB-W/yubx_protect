@@ -1,6 +1,7 @@
 import os
 import time
 import subprocess
+import platform
 
 # Function to prevent sleep using `xset` (graphical environments)
 def prevent_sleep_xset():
@@ -26,6 +27,23 @@ def prevent_sleep_logind():
     except Exception as e:
         print(f"Failed to modify logind.conf or restart service: {e}")
 
+# Function to prevent sleep on Windows using `powercfg`
+def prevent_sleep_windows():
+    try:
+        subprocess.run(['powercfg', '/change', 'monitor-timeout-ac', '0'], check=True)
+        subprocess.run(['powercfg', '/change', 'monitor-timeout-dc', '0'], check=True)
+        print("Sleep prevention activated on Windows.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to execute powercfg commands: {e}")
+
+# Function to prevent sleep on macOS using `caffeinate`
+def prevent_sleep_macos():
+    try:
+        subprocess.Popen(['caffeinate'])
+        print("Sleep prevention activated on macOS.")
+    except Exception as e:
+        print(f"Failed to execute caffeinate command: {e}")
+
 # Function to run a dummy loop to keep the system awake
 def prevent_sleep_loop():
     try:
@@ -36,8 +54,17 @@ def prevent_sleep_loop():
 
 # Main function
 def main():
-    prevent_sleep_xset()
-    prevent_sleep_logind()
+    os_type = platform.system()
+    if os_type == "Linux":
+        prevent_sleep_xset()
+        prevent_sleep_logind()
+    elif os_type == "Windows":
+        prevent_sleep_windows()
+    elif os_type == "Darwin":  # macOS
+        prevent_sleep_macos()
+    else:
+        print(f"Unsupported OS: {os_type}")
+
     print("System sleep prevention methods activated.")
     prevent_sleep_loop()
 

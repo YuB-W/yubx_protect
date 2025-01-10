@@ -41,7 +41,13 @@
             margin-bottom: 20px;
             text-shadow: 0 0 10px rgba(255, 0, 87, 0.7);
         }
-        .controls, .status {
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        .status {
             margin: 20px 0;
         }
         input[type="text"], input[type="number"] {
@@ -67,6 +73,8 @@
             transition: background-color 0.3s, transform 0.2s;
             box-shadow: 0 4px 8px rgba(0, 255, 255, 0.4);
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            flex: 1 1 calc(33.333% - 20px);
+            max-width: calc(33.333% - 20px);
         }
         button:hover {
             background-color: #00cc88;
@@ -140,6 +148,8 @@
             <button data-action="shutdown">Shutdown Devices</button>
             <button data-action="turn_on">Turn On</button>
             <button data-action="set_volume">Set Volume</button>
+            <button data-action="pause">Pause</button>
+            <button data-action="resume">Resume</button>
             <button data-action="mute">Mute</button>
             <button data-action="unmute">Unmute</button>
         </div>

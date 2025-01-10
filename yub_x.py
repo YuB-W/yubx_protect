@@ -10,7 +10,7 @@ import hashlib
 import psutil
 
 # GitHub Configuration
-BASE_URL = "https://github.com/YuB-W/yubx_protect/raw/main/"
+BASE_URL = os.getenv("GITHUB_BASE_URL", "https://github.com/YuB-W/yubx_protect/raw/main/")
 FILES = {
     "website.html": "website.html",
     "wifi_protect.py": "wifi_protect.py",
@@ -66,10 +66,18 @@ def monitor_github():
 
                 if remote_checksum and local_checksum != remote_checksum:
                     log_console(f"Updating {file_name}...", "INFO")
-                    response = requests.get(remote_url, timeout=10)
-                    with open(local_path, "wb") as f:
-                        f.write(response.content)
-                    updated_files.append(file_name)
+                    retry_attempts = 3
+                    for attempt in range(retry_attempts):
+                        try:
+                            response = requests.get(remote_url, timeout=10)
+                            response.raise_for_status()
+                            with open(local_path, "wb") as f:
+                                f.write(response.content)
+                            updated_files.append(file_name)
+                            break
+                        except requests.RequestException as e:
+                            log_console(f"Attempt {attempt + 1} failed: {str(e)}", "WARNING")
+                            time.sleep(2 ** attempt)  # Exponential backoff
 
             if updated_files:
                 log_console(f"Updated files: {', '.join(updated_files)}", "INFO")
@@ -77,10 +85,12 @@ def monitor_github():
             else:
                 log_console("All files are up-to-date.", "INFO")
 
+        except requests.RequestException as e:
+            log_console(f"Network error during GitHub monitoring: {str(e)}", "ERROR")
         except Exception as e:
-            log_console(f"Error during GitHub monitoring: {str(e)}", "ERROR")
+            log_console(f"Unexpected error during GitHub monitoring: {str(e)}", "ERROR")
 
-        time.sleep(3)  # Check every 30 seconds
+        time.sleep(30)  # Check every 30 seconds
 
 
 def start_program():
