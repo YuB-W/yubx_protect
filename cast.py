@@ -1,5 +1,6 @@
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, send_from_directory
 import pychromecast
+from conversational_ui import conversational_ui_bp
 import logging
 import json
 import os
@@ -25,6 +26,7 @@ def save_config(config):
         json.dump(config, file, indent=4)
 
 app = Flask(__name__)
+app.register_blueprint(conversational_ui_bp, url_prefix='/conversational_ui')
 
 def load_html_content():
     """Load HTML content from a file."""
@@ -70,6 +72,11 @@ def index():
     """Render the main page with HTML content."""
     chromecasts = discover_chromecast_devices()
     return render_template_string(HTML_CONTENT, chromecasts=chromecasts)
+
+@app.route('/conversational_ui')
+def serve_conversational_ui():
+    """Serve the conversational UI HTML page."""
+    return send_from_directory('.', 'conversational_ui.html')
 
 @app.route('/cast_media', methods=['POST'])
 def cast_media():
