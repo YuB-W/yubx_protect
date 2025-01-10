@@ -2,9 +2,9 @@ import subprocess
 import sys
 
 required_modules = [
-    "subprocess", "threading", "time", "logging", "datetime", "scapy", 
-    "flask", "playsound", "random", "string", "socket", "fcntl", 
-    "struct", "requests", "json", "numpy"
+    "subprocess", "threading", "time", "logging", "datetime", "scapy",
+    "flask", "playsound", "random", "string", "socket", "fcntl",
+    "struct", "requests", "json", "numpy", "termcolor"
 ]
 
 def install_module(module_name):
@@ -12,11 +12,11 @@ def install_module(module_name):
     try:
         print(f"[*] Checking if {module_name} is installed...")
         __import__(module_name)
-        print(f"[+] {module_name} is already installed.")
+        logger.info(f"[+] {module_name} is already installed.")
     except ImportError:
-        print(f"[!] {module_name} not found. Installing...")
+        logger.warning(f"[!] {module_name} not found. Installing...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", module_name])
-        print(f"[+] {module_name} installed successfully.")
+        logger.info(f"[+] {module_name} installed successfully.")
 
 def check_and_install_modules():
     """Check if all required modules are installed, install them if missing."""
@@ -176,7 +176,7 @@ def current_alert():
                     return jsonify(alert={"message": "Invalid ESSID data", "type": "red"})
         return jsonify(alert=None)
     except Exception as e:
-        logger.error(f"Error retrieving current alert: {e}")
+        logger.exception("Error retrieving current alert")
         return jsonify(alert={"message": "An error occurred while retrieving the alert", "type": "red"})
 
 @app.route('/auto_protect', methods=['POST'])
@@ -213,15 +213,16 @@ def detect_attack_patterns(packet):
     """Detect attack patterns and start auto protection."""
     global attacks, bssid_under_attack, last_alert_time
 
-    if packet.haslayer(Dot11Deauth):
-        bssid = packet[Dot11].addr2
+    if packet.haslayer(Dot11Deauth) or packet.haslayer(Dot11Disas) or packet.haslayer(Dot11ProbeReq):
+        bssid = packet[Dot11].addr2 if packet.haslayer(Dot11) else None
         current_time = time.time()
 
         if bssid not in [attack[2] for attack in attacks["deauth"]]:
             attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
             bssid_under_attack = bssid  
             logger.info(f"bssid_under_attack Updated: {bssid_under_attack}")
-            logger.info(f"Deauthentication attack detected: {bssid}")
+            attack_type = "Deauth" if packet.haslayer(Dot11Deauth) else "Disassoc" if packet.haslayer(Dot11Disas) else "Probe"
+            logger.info(f"{attack_type} attack detected: {bssid}")
             
             if bssid_under_attack:
                 with app.app_context():  
@@ -231,7 +232,8 @@ def detect_attack_patterns(packet):
                 return
 
             # Play sound alert if needed
-            threading.Thread(target=playsound, args=('detect.m4a',)).start()  
+            threading.Thread(target=playsound, args=('detect.m4a',)).start()
+            logger.debug(f"Sound alert played for {attack_type} attack.")
             last_alert_time = current_time
 
 @app.route('/')
@@ -259,7 +261,7 @@ def start_sniffing():
             return jsonify(status="Sniffing started")
         return jsonify(status="Interface not provided"), 400
     except Exception as e:
-        logger.error(f"Error starting sniffing: {e}")
+        logger.exception("Error starting sniffing")
         return jsonify(status="Error starting sniffing"), 500
 
 @app.route('/stop_sniffing', methods=['POST'])
@@ -272,7 +274,7 @@ def stop_sniffing():
             return jsonify(status="Sniffing stopped")
         return jsonify(status="No sniffing process found"), 400
     except Exception as e:
-        logger.error(f"Error stopping sniffing: {e}")
+        logger.exception("Error stopping sniffing")
         return jsonify(status="Error stopping sniffing"), 500
 
 
@@ -283,7 +285,7 @@ def start_sniffing_thread(iface_name):
             try:
                 sniff(iface=iface_name, prn=detect_attack_patterns, store=0)
             except Exception as e:
-                logger.error(f"Error during sniffing: {e}")
+                logger.exception("Error during sniffing")
                 time.sleep(5)
     sniff_thread = threading.Thread(target=sniff_loop)
     sniff_thread.daemon = True
@@ -300,7 +302,7 @@ def start_auth_dos(bssid, iface_name):
             auth_frame = RadioTap() / Dot11(addr1=bssid, addr2=fake_mac, addr3=bssid) / Dot11Auth(seqnum=1, status=0)
             sendp(auth_frame, iface=iface_name, verbose=False)
         except Exception as e:
-            logging.error(f"Error sending frame: {e}")
+            logger.exception("Error sending authentication frame")
 
     current_time = time.time()
     if bssid in last_attack_time and (current_time - last_attack_time[bssid]) < 20:
@@ -342,7 +344,7 @@ def fetch_data(url):
         logger.debug(f"Data fetched: {data}")  # Log the fetched data
         return data
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching data: {e}")
+        logger.exception("Error fetching data")
         return None        
     
 def load_existing_data(file_path):
@@ -404,4 +406,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -40,13 +40,17 @@ def print_colored_message(message, color):
 def discover_chromecast_devices(timeout=5):
     """Discover Chromecast devices with a specified timeout."""
     logging.info("Discovering Chromecast devices...")
-    try:
-        chromecasts, _ = pychromecast.get_chromecasts(timeout=timeout)
-        return chromecasts
-    except Exception as e:
-        logging.error(f"An error occurred while discovering devices: {e}")
-        print_colored_message("Failed to discover devices. Check the log for details.", 'red')
-        return []
+    attempts = 3
+    for attempt in range(attempts):
+        try:
+            chromecasts, _ = pychromecast.get_chromecasts(timeout=timeout)
+            if chromecasts:
+                return chromecasts
+        except Exception as e:
+            logging.error(f"Attempt {attempt + 1} failed: {e}")
+            time.sleep(2 ** attempt)  # Exponential backoff
+    print_colored_message("Failed to discover devices after multiple attempts. Check the log for details.", 'red')
+    return []
 
 def print_available_devices(chromecasts):
     """Print the list of discovered Chromecast devices."""
@@ -116,8 +120,25 @@ def cast_media_to_device(device, media_url, media_type, duration=None):
             print_colored_message(f"{device.name} is not idle. Skipping casting.", 'yellow')
             return
 
-        mc.play_media(media_url, media_type)
-        mc.block_until_active()
+        # Determine media type if not provided
+        if not media_type:
+            if media_url.endswith('.mp4'):
+                media_type = 'video/mp4'
+            elif media_url.endswith('.mp3'):
+                media_type = 'audio/mp3'
+            elif media_url.endswith('.jpg') or media_url.endswith('.jpeg'):
+                media_type = 'image/jpeg'
+            elif media_url.endswith('.png'):
+                media_type = 'image/png'
+            else:
+                media_type = 'video/mp4'  # Default to video/mp4
+
+        if device.is_idle:
+            mc.play_media(media_url, media_type)
+            mc.block_until_active()
+        else:
+            logging.warning(f"{device.name} is not idle. Skipping casting.")
+            print_colored_message(f"{device.name} is not idle. Skipping casting.", 'yellow')
 
         if duration:
             logging.info(f"Waiting for {duration} seconds...")

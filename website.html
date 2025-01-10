@@ -28,9 +28,10 @@
 
         #controls {
             display: flex;
-            justify-content: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
             gap: 10px;
-            padding: 10px;
+            padding: 15px;
             background-color: #1a1a1a;
             border-bottom: 2px solid #00ff00;
         }
@@ -39,11 +40,13 @@
             background-color: #333;
             color: #00ff00;
             border: 1px solid #00ff00;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 25px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
             transition: background-color 0.3s, transform 0.2s;
+            flex: 1 1 150px;
+            max-width: 200px;
         }
 
         #controls button:hover {
@@ -177,6 +180,8 @@
         <button onclick="protectWiFi()">Protect</button>
         <button onclick="autoProtect()">Auto Protect</button>
         <button onclick="fetchAlerts()">Zoom To Alert</button>
+        <button onclick="refreshMap()">Refresh Map</button>
+        <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     </div>
     <div id="map"></div>
     <div id="logs"></div>
@@ -190,11 +195,21 @@
 
         // Define the target icon
         const targetIcon = L.icon({
-            iconUrl: 'https://github.com/YuB-W/files/blob/main/ta2.png', // Replace with the URL to your target icon
-            iconSize: [162, 162], // Size of the icon
-            iconAnchor: [76, 70], // Anchor point of the icon
-            popupAnchor: [0, -32] // Popup position
+            iconUrl: 'https://github.com/YuB-W/files/blob/main/ta2.png',
+            iconSize: [162, 162],
+            iconAnchor: [81, 81],
+            popupAnchor: [0, -40]
         });
+
+        function refreshMap() {
+            map.invalidateSize();
+            showAlert('Map refreshed', 'success');
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            showAlert('Dark mode toggled', 'success');
+        }
 
         let targetMarker;
 

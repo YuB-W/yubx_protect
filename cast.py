@@ -39,12 +39,18 @@ HTML_CONTENT = load_html_content()
 def discover_chromecast_devices(timeout=5):
     """Discover Chromecast devices with a specified timeout."""
     logging.info("Discovering Chromecast devices...")
-    try:
-        chromecasts, _ = pychromecast.get_chromecasts(timeout=timeout)
-        return chromecasts
-    except Exception as e:
-        logging.error(f"An error occurred while discovering devices: {e}")
-        return []
+    attempts = 3
+    for attempt in range(attempts):
+        try:
+            chromecasts, _ = pychromecast.get_chromecasts(timeout=timeout)
+            if chromecasts:
+                logging.info(f"Discovered {len(chromecasts)} Chromecast devices.")
+                return chromecasts
+        except Exception as e:
+            logging.error(f"Attempt {attempt + 1} failed: {e}")
+            time.sleep(2 ** attempt)  # Exponential backoff
+    logging.error("Failed to discover devices after multiple attempts.")
+    return []
 
 def get_ip_address(interface):
     """Get the IP address of a specified network interface."""
@@ -68,15 +74,23 @@ def index():
 @app.route('/cast_media', methods=['POST'])
 def cast_media():
     """Cast media to selected devices."""
-    data = request.json
-    device_ids = data.get('device_ids', [])
-    media_url = data.get('media_url', '')
-    media_type = data.get('media_type', '')
-    duration = data.get('duration', None)
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON data'}), 400
+    device_ids = data.get('device_ids')
+    media_url = data.get('media_url')
+    media_type = data.get('media_type')
+    duration = data.get('duration')
+    if not device_ids or not media_url:
+        return jsonify({'status': 'error', 'message': 'Device IDs and media URL are required'}), 400
     chromecasts = discover_chromecast_devices()
 
     for device_id in device_ids:
-        device = chromecasts[int(device_id)]
+        try:
+            device = chromecasts[int(device_id)]
+        except (IndexError, ValueError):
+            logging.error(f"Invalid device ID: {device_id}")
+            continue
         try:
             logging.info(f"Casting media {media_url} to {device.name}...")
             device.wait()
@@ -97,6 +111,50 @@ def cast_media():
             logging.info(f"Media casting started on {device.name}.")
         except Exception as e:
             logging.error(f"An error occurred while casting: {e}")
+
+    return jsonify({'status': 'success'}), 200
+
+@app.route('/pause', methods=['POST'])
+def pause():
+    """Pause media on selected devices."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON data'}), 400
+    device_ids = data.get('device_ids')
+    if not device_ids:
+        return jsonify({'status': 'error', 'message': 'Device IDs are required'}), 400
+    chromecasts = discover_chromecast_devices()
+
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Pausing media on {device.name}...")
+            device.media_controller.pause()
+            logging.info(f"Media paused on {device.name}.")
+        except Exception as e:
+            logging.error(f"Error pausing media on {device.name}: {e}")
+
+    return jsonify({'status': 'success'}), 200
+
+@app.route('/resume', methods=['POST'])
+def resume():
+    """Resume media on selected devices."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON data'}), 400
+    device_ids = data.get('device_ids')
+    if not device_ids:
+        return jsonify({'status': 'error', 'message': 'Device IDs are required'}), 400
+    chromecasts = discover_chromecast_devices()
+
+    for device_id in device_ids:
+        device = chromecasts[int(device_id)]
+        try:
+            logging.info(f"Resuming media on {device.name}...")
+            device.media_controller.play()
+            logging.info(f"Media resumed on {device.name}.")
+        except Exception as e:
+            logging.error(f"Error resuming media on {device.name}: {e}")
 
     return jsonify({'status': 'success'}), 200
 

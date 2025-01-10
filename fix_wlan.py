@@ -73,8 +73,20 @@ def check_airplane_mode():
     
     return True
 
+def check_interface_exists(interface):
+    """Check if the specified network interface exists and is up."""
+    log_and_print(f"[*] Checking if interface {interface} exists...")
+    result = run_command(f"ip link show {interface}")
+    if result is None or "state DOWN" in result:
+        log_and_print(f"[!] Interface {interface} does not exist or is down.", "error")
+        return False
+    log_and_print(f"[+] Interface {interface} exists and is up.")
+    return True
+
 def bring_interface_down(interface):
     """Bring down the specified interface."""
+    if not check_interface_exists(interface):
+        return False
     log_and_print(f"[*] Bringing down interface {interface}...")
     result = run_command(f"sudo ip link set {interface} down")
     if result is None:
@@ -85,6 +97,8 @@ def bring_interface_down(interface):
 
 def bring_interface_up(interface):
     """Bring up the specified interface."""
+    if not check_interface_exists(interface):
+        return False
     log_and_print(f"[*] Bringing up interface {interface}...")
     result = run_command(f"sudo ip link set {interface} up")
     if result is None:
@@ -124,6 +138,9 @@ def fix_wlan(interface="wlan0"):
     """Fix WLAN issues by handling RF-kill, airplane mode, and interface settings."""
     log_and_print(f"[*] Starting WLAN fix for {interface}...")
     
+    if not check_interface_exists(interface):
+        log_and_print(f"[!] Interface {interface} does not exist. Exiting...", "error")
+        return
     if not check_rf_kill():
         return
     if not check_airplane_mode():
