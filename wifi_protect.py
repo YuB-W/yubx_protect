@@ -62,7 +62,7 @@ last_attack_time = {}
 ALERT_COOLDOWN = 15
 last_alert_time = 0
 
-url = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
+url = "https://alerts-history.oref.org.il//Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=2"
 file_path = "alerts_history.json"
 delay_seconds = 5  # Delay in seconds between each fetch and send operation
 
@@ -340,12 +340,16 @@ def fetch_data(url):
         logger.debug(f"Fetching data from {url}")
         response = requests.get(url)
         response.raise_for_status()
-        data = response.json()
-        logger.debug(f"Data fetched: {data}")  # Log the fetched data
-        return data
+        try:
+            data = response.json()
+            logger.debug(f"Data fetched: {data}")  # Log the fetched data
+            return data
+        except json.JSONDecodeError:
+            logger.error("Response content is not JSON")
+            return None
     except requests.exceptions.RequestException as e:
         logger.exception("Error fetching data")
-        return None        
+        return None
     
 def load_existing_data(file_path):
     """Load existing data from the specified file."""
@@ -375,12 +379,17 @@ def update_alert_data(file_path, new_data):
 @app.route('/alerts', methods=['GET'])
 def get_alerts():
     if os.path.exists(file_path):
-        with open(file_path, 'r', encoding='utf-8') as file:
-            alerts = json.load(file)
-        logger.debug("Returning alerts data")
-        return jsonify(alerts)
-    logger.debug("No alerts data found")
-    return jsonify([])
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                alerts = json.load(file)
+            logger.debug("Returning alerts data")
+            return jsonify(alerts)
+        except json.JSONDecodeError:
+            logger.error("Error decoding JSON from alerts file")
+            return jsonify([])
+    else:
+        logger.debug("No alerts data found")
+        return jsonify([])
 
 def main():
     """Main function to run the Flask app."""
