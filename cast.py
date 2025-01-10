@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string, request, jsonify
 import pychromecast
+from semantic_search import SemanticSearch
 import logging
 import json
 import os
@@ -25,6 +26,7 @@ def save_config(config):
         json.dump(config, file, indent=4)
 
 app = Flask(__name__)
+semantic_search = SemanticSearch()
 
 def load_html_content():
     """Load HTML content from a file."""
@@ -70,6 +72,19 @@ def index():
     """Render the main page with HTML content."""
     chromecasts = discover_chromecast_devices()
     return render_template_string(HTML_CONTENT, chromecasts=chromecasts)
+
+@app.route('/semantic_search', methods=['POST'])
+def semantic_search_route():
+    """Perform a semantic search on provided documents."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON data'}), 400
+    query = data.get('query')
+    documents = data.get('documents')
+    if not query or not documents:
+        return jsonify({'status': 'error', 'message': 'Query and documents are required'}), 400
+    results = semantic_search.search(query, documents)
+    return jsonify({'status': 'success', 'results': results}), 200
 
 @app.route('/cast_media', methods=['POST'])
 def cast_media():

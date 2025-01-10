@@ -15,7 +15,9 @@ YuB Protect is a powerful, Python-based application designed exclusively for Kal
 - [Features](#features)
 - [Installation](#installation)
 - [New Features](#new-features)
+- [Semantic Search](#semantic-search)
 - [Making the Project Public](#making-the-project-public)
+- [Name](#name)
 
 ## About
 
@@ -92,6 +94,24 @@ alert_r.m4a: Alert sound for detected threats.
 detect.m4a: Sound for general detections.
 welcome.m4a: Welcome message sound upon application startup.
 These files can be customized by replacing them with your own audio files in the project directory.
+
+## Semantic Search
+
+Semantic search is a feature that enhances the search capabilities of YuB Protect by understanding the context and intent behind search queries. Unlike traditional keyword-based search, semantic search aims to improve the accuracy of search results by considering the meaning of words and the relationships between them.
+
+### How to Use Semantic Search
+
+Within the YuB Protect application, semantic search can be used to quickly find relevant information from logs or documentation. This feature is particularly useful for identifying patterns or specific incidents in large datasets.
+
+### Setup and Configuration
+
+To enable semantic search, ensure that the `sentence-transformers` library is installed. This can be done by running the following command:
+
+```bash
+sudo pip3 install -r requirements.txt
+```
+
+The semantic search functionality is integrated into the application and can be accessed through the appropriate endpoints or user interface components.
 
 ## Making the Project Public
 
