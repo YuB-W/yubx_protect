@@ -15,6 +15,7 @@ YuB Protect is a powerful, Python-based application designed exclusively for Kal
 - [Features](#features)
 - [Installation](#installation)
 - [New Features](#new-features)
+- [Making the Project Public](#making-the-project-public)
 
 ## About
 
@@ -91,6 +92,31 @@ alert_r.m4a: Alert sound for detected threats.
 detect.m4a: Sound for general detections.
 welcome.m4a: Welcome message sound upon application startup.
 These files can be customized by replacing them with your own audio files in the project directory.
+
+## Making the Project Public
+
+To make the YuB Protect project public, follow these steps:
+
+1. **Set Repository Visibility:**
+   - Go to your repository on GitHub.
+   - Click on the "Settings" tab.
+   - Scroll down to the "Danger Zone" section.
+   - Click on "Change repository visibility".
+   - Select "Public" and confirm your choice.
+
+2. **Ensure All Necessary Files are Included:**
+   - Verify that all essential files are present in the repository.
+   - Ensure that no sensitive information, such as API keys or passwords, is included in the codebase.
+
+3. **Review Documentation:**
+   - Update the README.md and other documentation to ensure they are suitable for public viewing.
+   - Remove any internal notes or placeholders that are not intended for public users.
+
+4. **Check External Dependencies:**
+   - Ensure that all external resources and dependencies are publicly accessible.
+   - Update any links or references to private assets.
+
+By following these steps, you can safely make your YuB Protect project available to the public.
 
 ## Name
 [Yub-X]

@@ -42,7 +42,7 @@ def check_rf_kill():
 
     if "Soft blocked: yes" in rf_kill_output:
         log_and_print("[!] Wireless LAN is blocked by RF-kill. Unblocking...")
-        run_command("sudo rfkill unblock wifi")
+        run_command("rfkill unblock wifi")
         time.sleep(1)  # Wait for the unblock command to take effect
         log_and_print("[+] Wireless LAN unblocked.")
         
@@ -88,7 +88,7 @@ def bring_interface_down(interface):
     if not check_interface_exists(interface):
         return False
     log_and_print(f"[*] Bringing down interface {interface}...")
-    result = run_command(f"sudo ip link set {interface} down")
+    result = run_command(f"ip link set {interface} down")
     if result is None:
         log_and_print(f"[!] Error bringing {interface} down.", "error")
         return False
@@ -100,7 +100,7 @@ def bring_interface_up(interface):
     if not check_interface_exists(interface):
         return False
     log_and_print(f"[*] Bringing up interface {interface}...")
-    result = run_command(f"sudo ip link set {interface} up")
+    result = run_command(f"ip link set {interface} up")
     if result is None:
         log_and_print(f"[!] Error bringing {interface} up.", "error")
         return False
@@ -110,14 +110,14 @@ def bring_interface_up(interface):
 def set_monitor_mode(interface):
     """Set the WLAN interface to monitor mode."""
     log_and_print(f"[*] Setting {interface} to monitor mode...")
-    run_command(f"sudo iw dev {interface} set type monitor")
+    run_command(f"iw dev {interface} set type monitor")
     log_and_print(f"[+] {interface} set to monitor mode.")
     return bring_interface_up(interface)
 
 def renew_dhcp_lease(interface):
     """Renew the DHCP lease for the specified interface."""
     log_and_print(f"[*] Renewing DHCP lease for {interface}...")
-    dhcp_output = run_command(f"sudo dhclient {interface}")
+    dhcp_output = run_command(f"dhclient {interface}")
     if dhcp_output is None:
         log_and_print(f"[!] Error renewing DHCP lease for {interface}.", "error")
         return False
@@ -127,7 +127,7 @@ def renew_dhcp_lease(interface):
 def restart_network_manager():
     """Restart the Network Manager service."""
     log_and_print("[*] Restarting Network Manager...")
-    result = run_command("sudo systemctl restart NetworkManager")
+    result = run_command("systemctl restart NetworkManager")
     if result is None:
         log_and_print("[!] Error restarting Network Manager.", "error")
         return False

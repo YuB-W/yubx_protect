@@ -30,7 +30,7 @@ import threading
 import urllib.parse
 from termcolor import colored
 
-logging.basicConfig(filename='casting.log', level=logging.INFO, 
+logging.basicConfig(filename='casting.log', level=logging.WARNING, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 def print_colored_message(message, color):
@@ -173,7 +173,7 @@ def turn_on_device(device):
         mc = device.media_controller
 
         # Play a default media URL to wake up the device
-        default_media_url = "http://www.hdwallpapers.in/walls/black_hd-wide.jpg"
+        default_media_url = "https://example.com/default_media.jpg"
         default_media_type = "image/jpeg"
         mc.play_media(default_media_url, default_media_type)
         mc.block_until_active()

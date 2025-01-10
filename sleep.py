@@ -48,7 +48,7 @@ def prevent_sleep_macos():
 def prevent_sleep_loop():
     try:
         while True:
-            time.sleep(300)  # Sleep for 5 minutes before looping again
+            time.sleep(60)  # Sleep for 60 seconds before looping again
     except KeyboardInterrupt:
         print("Script terminated by user.")
 

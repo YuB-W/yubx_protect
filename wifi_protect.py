@@ -44,7 +44,7 @@ import json
 import numpy as np
 
 # Configure logging
-logging.basicConfig(filename='wifi_monitor.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
+logging.basicConfig(filename='wifi_monitor.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger()
 attacks = {
     "deauth": [],

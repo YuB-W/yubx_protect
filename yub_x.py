@@ -10,7 +10,7 @@ import hashlib
 import psutil
 
 # GitHub Configuration
-BASE_URL = "https://github.com/YuB-W/yubx_protect/raw/main/"
+BASE_URL = os.getenv("GITHUB_BASE_URL", "https://github.com/YuB-W/yubx_protect/raw/main/")
 FILES = {
     "website.html": "website.html",
     "wifi_protect.py": "wifi_protect.py",

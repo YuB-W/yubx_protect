@@ -7,7 +7,7 @@ import time
 import socket
 
 # Configure logging
-logging.basicConfig(filename='casting.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='casting.log', level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configuration File
 CONFIG_FILE = 'config.json'
@@ -28,7 +28,7 @@ app = Flask(__name__)
 
 def load_html_content():
     """Load HTML content from a file."""
-    html_file_path = '/home/kali/Desktop/Python/yubx_protect/index.html'
+    html_file_path = os.getenv('HTML_FILE_PATH', 'index.html')
     if os.path.exists(html_file_path):
         with open(html_file_path, 'r') as file:
             return file.read()
