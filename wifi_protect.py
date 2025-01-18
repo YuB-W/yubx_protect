@@ -69,7 +69,7 @@ last_attack_time = {}
 ALERT_COOLDOWN = 15
 last_alert_time = 0
 
-url = "https://alerts-history.oref.org.il//Shared/Ajax/GetAlarmsHistory.aspx?lang=en&mode=2"
+url = "https://alerts-history.oref.org.il//Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=2"
 file_path = "alerts_history.json"
 delay_seconds = 5  # Delay in seconds between each fetch and send operation
 
