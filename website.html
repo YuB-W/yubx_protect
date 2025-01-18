@@ -394,11 +394,12 @@ async function displayAlerts(alerts) {
         alertMarkers[city].bindPopup(`
             <div class="alert-popup">
                 <div class="alert-header">
-                        <strong>${alert.title}</strong>
+                        <strong>${alert.category_desc}</strong>
                     </div>
                     <div class="alert-body">
-                        <p>${alert.data}</p>
-                        <small class="alert-date">${alertDate}</small>
+                    	<p>city: ${alert.data}</p>
+                        <p>time: ${alert.time}</p>
+                        <small class="alert-date">date: ${alert.date}</small>
                     </div>
                     <div class="alert-footer">
                         <span class="alert-footer-text">Issued by system</span>
