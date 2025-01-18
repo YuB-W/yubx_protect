@@ -69,7 +69,7 @@ last_attack_time = {}
 ALERT_COOLDOWN = 15
 last_alert_time = 0
 
-url = "https://alerts-history.oref.org.il//Shared/Ajax/GetAlarmsHistory.aspx?lang=en&mode=3" # 1 = day 2 = week = m
+url = "https://alerts-history.oref.org.il//Shared/Ajax/GetAlarmsHistory.aspx?lang=en&mode=2"
 file_path = "alerts_history.json"
 delay_seconds = 5  # Delay in seconds between each fetch and send operation
 
@@ -408,6 +408,7 @@ def main():
     
     fetch_thread = Thread(target=data_fetcher, daemon=True)
     fetch_thread.start()
+    time.sleep(6)
     threading.Thread(target=playsound, args=('welcome.m4a',)).start()
     app.run(debug=False, host='0.0.0.0', port=5000)
 
