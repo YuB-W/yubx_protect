@@ -45,7 +45,6 @@ To install and set up YuB Protect, follow these steps:
    ```bash
    git clone https://github.com/YuB-W/yubx_protect.git
    cd yubx_protect
-   cd yubx_protect
    # Ensure Python 3 is installed
    sudo apt-get install python3
 
