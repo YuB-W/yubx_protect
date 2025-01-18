@@ -1,3 +1,14 @@
+import logging
+
+# Configure logging
+logging.basicConfig(
+    filename='wifi_monitor.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
+logger = logging.getLogger()
+
+
 import subprocess
 import sys
 
@@ -29,7 +40,6 @@ import os
 from threading import Thread
 import threading
 import time
-import logging
 from datetime import datetime, timedelta
 from flask import Flask, render_template_string, request, jsonify, current_app
 from scapy.all import sniff, Dot11Deauth, RadioTap, Dot11, Dot11Auth, sendp, Dot11Beacon
@@ -43,9 +53,6 @@ import requests
 import json
 import numpy as np
 
-# Configure logging
-logging.basicConfig(filename='wifi_monitor.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
-logger = logging.getLogger()
 attacks = {
     "deauth": [],
     "auth": [],
