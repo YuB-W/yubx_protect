@@ -425,22 +425,33 @@ async function displayAlerts(alerts) {
 
             // Function to fetch coordinates for a city using OpenStreetMap's Nominatim service
             async function fetchCoordinates(cityName) {
-                const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)},Israel&format=json&limit=100`;
-
+                if (!cityName) {
+                    console.error("City name cannot be empty.");
+                    return null;
+                }
+            
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)},Israel&format=json&limit=1&countrycodes=IL`;
+            
                 try {
                     const response = await fetch(geocodeUrl);
+                    if (!response.ok) {
+                        console.error(`Error: Received status ${response.status}`);
+                        return null;
+                    }
+            
                     const data = await response.json();
-                    if (data && data.length > 0) {
+                    if (data.length > 0) {
                         return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
                     } else {
-                        console.error(`Coordinates not found for city: ${cityName}`);
+                        console.warn(`No results found for city: ${cityName}`);
                         return null;
                     }
                 } catch (error) {
-                    console.error(`Error fetching coordinates for city: ${cityName}`, error);
+                    console.error(`Failed to fetch coordinates for city: ${cityName}`, error);
                     return null;
                 }
             }
+
         
         async function fetchAlerts() {
                 try {
