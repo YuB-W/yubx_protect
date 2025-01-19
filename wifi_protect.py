@@ -330,17 +330,6 @@ def start_auth_dos(bssid, iface_name):
     last_attack_time[bssid] = current_time
     logging.info(f"Auth DoS on BSSID {bssid} completed.")
    
-def get_ip_address(interface):
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(
-            s.fileno(),
-            0x8915,  # SIOCGIFADDR
-            struct.pack('256s', interface[:15].encode('utf-8'))
-        )[20:24])
-    except IOError:
-        return None
-    
 def fetch_data(url):
     """Fetch data from the specified URL and return the JSON response."""
     try:
@@ -389,8 +378,20 @@ def get_alerts():
     logger.debug("No alerts data found")
     return jsonify([])
 
+def get_ip_address(interface):
+    """Get the IP address of a specified network interface."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(('8.8.8.8', 80))  # Connect to an external address
+        ip_address = s.getsockname()[0]
+        s.close()
+        return ip_address
+    except Exception as e:
+        logging.error(f"Unable to get IP address for interface {interface}: {e}")
+        return "0.0.0.0"
+
 def main():
-    """Main function to run the Flask app."""
     ip_address = get_ip_address('eth0')
     print("\nWebsite:", ip_address + ":5000\n") 
 	
