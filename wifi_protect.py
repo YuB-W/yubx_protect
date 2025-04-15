@@ -3,7 +3,6 @@ import logging.handlers
 
 # Fixed Configuration
 INTERFACE = "wlan0"  # Change this to your actual interface
-GEOIP_PATH = "./GeoLite2-City.mmdb"  # Ensure this file exists
 
 # Configure logging properly
 logger = logging.getLogger()
@@ -401,15 +400,7 @@ def verify_interface():
         logger.error("netifaces module required. Install with: pip install netifaces")
         sys.exit(1)
 
-def check_geoip():
-    """Verify GeoIP database exists"""
-    if not os.path.exists(GEOIP_PATH):
-        logger.error(f"GeoIP database missing! Download from:")
-        logger.error("https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en")
-        sys.exit(1)
-
 verify_interface()
-check_geoip()
 
 
 def start_sniffing_thread(iface_name=INTERFACE, bpf_filter=None):
