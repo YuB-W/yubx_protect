@@ -4,39 +4,46 @@ import importlib
 
 
 required_modules = [
-    "flask", "playsound", "requests", "numpy", "termcolor", "netifaces", "scapy" "tkinter"
+    "flask", "playsound", "requests", "numpy",
+    "termcolor", "netifaces", "scapy"
 ]
 
 
 required_apt_packages = [
-    "xterm", "python3-pip", "python3-venv", "ffmpeg", "build-essential", "python3-dev"
+    "xterm", "python3-pip", "python3-venv", "ffmpeg",
+    "build-essential", "python3-dev", "python3-tk"  # for tkinter
 ]
+
+def log_console(message):
+    print(f"[LOG] {message}") 
 
 def install_apt_dependencies():
     log_console("Checking APT dependencies...")
     for pkg in required_apt_packages:
         result = subprocess.run(["dpkg", "-s", pkg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if result.returncode != 0:
-            log_console(f"Installing missing APT package: {pkg}")
+            print(f"Installing missing APT package: {pkg}")
             try:
                 subprocess.check_call(["sudo", "apt", "install", "-y", pkg])
             except subprocess.CalledProcessError:
-                log_console(f"Failed to install APT package: {pkg}")
+                print(f"Failed to install APT package: {pkg}")
 
 def install_python_modules():
-    log_console("Checking Python modules...")
+    print("Checking Python modules...")
     for module in required_modules:
         try:
             importlib.import_module(module)
         except ImportError:
-            log_console(f"Installing missing module: {module}")
+            print(f"Installing missing Python module: {module}")
             try:
                 subprocess.check_call([sys.executable, "-m", "pip", "install", module])
             except subprocess.CalledProcessError:
-                log_console(f"Failed to install module: {module}")
+                print(f"Failed to install Python module: {module}")
+
 
 install_apt_dependencies()
 install_python_modules()
+
 
 
 import os
