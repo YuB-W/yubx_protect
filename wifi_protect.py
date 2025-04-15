@@ -1,13 +1,30 @@
 import logging
+import logging.handlers 
 
-# Configure logging
-logging.basicConfig(
-    filename='wifi_monitor.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s'
-)
+# Fixed Configuration
+INTERFACE = "wlan0"  # Change this to your actual interface
+GEOIP_PATH = "./GeoLite2-City.mmdb"  # Ensure this file exists
+
+# Configure logging properly
 logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
+# Create handlers
+file_handler = logging.handlers.RotatingFileHandler(
+    'wifi_monitor.log',
+    maxBytes=10*1024*1024,
+    backupCount=5
+)
+console_handler = logging.StreamHandler()
+
+# Create formatter and add to handlers
+formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add handlers to the logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 import subprocess
 import sys
@@ -15,7 +32,7 @@ import sys
 required_modules = [
     "subprocess", "threading", "time", "logging", "datetime", "scapy",
     "flask", "playsound", "random", "string", "socket", "fcntl",
-    "struct", "requests", "json", "numpy", "termcolor"
+    "struct", "requests", "json", "numpy", "termcolor", "netifaces"
 ]
 
 def install_module(module_name):
@@ -42,7 +59,10 @@ import threading
 import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template_string, request, jsonify, current_app
-from scapy.all import sniff, Dot11Deauth, RadioTap, Dot11, Dot11Auth, sendp, Dot11Beacon
+from scapy.all import (
+    sniff, Dot11Deauth, RadioTap, Dot11, Dot11Auth, sendp,
+    Dot11Beacon, Dot11Disas, Dot11ProbeReq  # <-- Add this
+)
 from playsound import playsound
 import random
 import string
@@ -52,6 +72,8 @@ import struct
 import requests
 import json
 import numpy as np
+import traceback
+
 
 attacks = {
     "deauth": [],
@@ -64,14 +86,17 @@ sniff_thread = None
 a_p = False  # Auto protection flag
 bssid_under_attack = None
 previous_bssid = ""
-app = Flask(__name__)
 last_attack_time = {}
 ALERT_COOLDOWN = 15
 last_alert_time = 0
 
-url = "https://alerts-history.oref.org.il//Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=2" # 1 = In the past day 2 = In the past week 3 = In the past month
+app = Flask(__name__)
+url = "https://alerts-history.oref.org.il//Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=2"  # 1 = In the past day 2 = In the past week 3 = In the past month
 file_path = "alerts_history.json"
 delay_seconds = 5  # Delay in seconds between each fetch and send operation
+
+
+
 
 try:
     with open('website.html', 'r') as file:
@@ -128,7 +153,7 @@ def determine_attacker_location(rssi_values, band='2.4GHz'):
         location = "Attacker is potentially in an adjacent building"
     return location, distance
     
-def extract_essid_from_bssid(bssid, iface="wlan0", timeout=10):
+def extract_essid_from_bssid(bssid, iface=INTERFACE, timeout=10):
     essid_dict = {}
     def packet_handler(packet):
         if packet.haslayer(Dot11Beacon):
@@ -207,7 +232,7 @@ def protect_wifi():
     """Start an authentication DoS attack to protect the Wi-Fi network under attack."""
     global bssid_under_attack
     if bssid_under_attack:
-        iface = 'wlan0'
+        iface = INTERFACE
         if iface:
             with app.app_context():
                 threading.Thread(target=start_auth_dos, args=(bssid_under_attack, iface)).start()
@@ -220,28 +245,35 @@ def detect_attack_patterns(packet):
     """Detect attack patterns and start auto protection."""
     global attacks, bssid_under_attack, last_alert_time
 
+    if not packet.haslayer(Dot11):
+        return
+
+    bssid = packet[Dot11].addr2
+    current_time = time.time()
+
     if packet.haslayer(Dot11Deauth) or packet.haslayer(Dot11Disas) or packet.haslayer(Dot11ProbeReq):
-        bssid = packet[Dot11].addr2 if packet.haslayer(Dot11) else None
-        current_time = time.time()
+        attack_type = "Deauth" if packet.haslayer(Dot11Deauth) else "Disassoc" if packet.haslayer(Dot11Disas) else "Probe"
 
-        if bssid not in [attack[2] for attack in attacks["deauth"]]:
-            attacks["deauth"].append((datetime.now(), "Deauth attack", bssid))
-            bssid_under_attack = bssid  
-            logger.info(f"bssid_under_attack Updated: {bssid_under_attack}")
-            attack_type = "Deauth" if packet.haslayer(Dot11Deauth) else "Disassoc" if packet.haslayer(Dot11Disas) else "Probe"
-            logger.info(f"{attack_type} attack detected: {bssid}")
-            
-            if bssid_under_attack:
-                with app.app_context():  
-                    threading.Thread(target=protect_wifi).start()  
+        if bssid not in attack_timestamps:
+            attack_timestamps[bssid] = []
 
-            if current_time - last_alert_time < ALERT_COOLDOWN:
-                return
+        attack_timestamps[bssid].append(current_time)
+        attack_timestamps[bssid] = [ts for ts in attack_timestamps[bssid] if current_time - ts <= attack_window_seconds]
 
-            # Play sound alert if needed
-            threading.Thread(target=playsound, args=('detect.m4a',)).start()
-            logger.debug(f"Sound alert played for {attack_type} attack.")
-            last_alert_time = current_time
+        if len(attack_timestamps[bssid]) >= attack_threshold:
+            if bssid_under_attack != bssid:
+                logger.info(f"{attack_type} attack detected from {bssid} (rate: {len(attack_timestamps[bssid])}/sec)")
+                attacks["deauth"].append((datetime.now(), f"{attack_type} attack", bssid))
+                bssid_under_attack = bssid
+                logger.info(f"bssid_under_attack Updated: {bssid_under_attack}")
+
+                with app.app_context():
+                    threading.Thread(target=protect_wifi).start()
+
+                if current_time - last_alert_time >= ALERT_COOLDOWN:
+                    threading.Thread(target=playsound, args=('detect.m4a',)).start()
+                    logger.debug(f"Sound alert played for {attack_type} attack.")
+                    last_alert_time = current_time
 
 @app.route('/')
 def index():
@@ -285,19 +317,126 @@ def stop_sniffing():
         return jsonify(status="Error stopping sniffing"), 500
 
 
-def start_sniffing_thread(iface_name):
-    global sniff_thread
+
+@app.route('/api/geocode')
+def geocode():
+    city = request.args.get('city')
+    if not city:
+        return jsonify({'error': 'Missing city parameter'}), 400
+
+    headers = {
+        'Accept-Language': 'en',
+        'User-Agent': 'yubx/1.0 (yubx@gmail.com)'  # required for Nominatim
+    }
+
+    def query_nominatim():
+        try:
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'q': f"{city},Israel",
+                'format': 'json',
+                'limit': 1,
+                'countrycodes': 'IL'
+            }
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+            print(f"[Nominatim] URL: {response.url}")
+            response.raise_for_status()
+            data = response.json()
+            if data:
+                return data
+        except Exception as e:
+            print(f"[Nominatim] Error: {e}")
+        return None
+
+    def query_locationiq():
+        try:
+            # Replace with your own LocationIQ token
+            token = 'pk.836f35c4953de25fa9abbec72eaea5ce'
+            url = f'https://us1.locationiq.com/v1/search.php'
+            params = {
+                'key': token,
+                'q': f"{city},Israel",
+                'format': 'json',
+                'limit': 1,
+                'countrycodes': 'IL'
+            }
+            response = requests.get(url, params=params, timeout=5)
+            print(f"[LocationIQ] URL: {response.url}")
+            response.raise_for_status()
+            data = response.json()
+            if data:
+                return data
+        except Exception as e:
+            print(f"[LocationIQ] Error: {e}")
+        return None
+
+    try:
+        # First try Nominatim
+        data = query_nominatim()
+
+        # If that fails, try LocationIQ
+        if not data:
+            data = query_locationiq()
+
+        if not data:
+            return jsonify({'error': f'City not found: {city}'}), 404
+
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"[API] Fatal error for city '{city}': {e}")
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
+
+def verify_interface():
+    """Check if the network interface exists"""
+    try:
+        import netifaces
+        interfaces = netifaces.interfaces()
+        if INTERFACE not in interfaces:
+            logger.error(f"Interface {INTERFACE} not found! Available interfaces: {', '.join(interfaces)}")
+            sys.exit(1)
+    except ImportError:
+        logger.error("netifaces module required. Install with: pip install netifaces")
+        sys.exit(1)
+
+def check_geoip():
+    """Verify GeoIP database exists"""
+    if not os.path.exists(GEOIP_PATH):
+        logger.error(f"GeoIP database missing! Download from:")
+        logger.error("https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en")
+        sys.exit(1)
+
+verify_interface()
+check_geoip()
+
+
+def start_sniffing_thread(iface_name=INTERFACE, bpf_filter=None):
+    """Start sniffing thread with error handling and optional BPF filter."""
+    global sniff_thread, stop_sniffing
+
+    if iface_name not in get_if_list():
+        logger.error(f"Interface '{iface_name}' not found. Available: {get_if_list()}")
+        return
+
     def sniff_loop():
-        while True:
+        logger.info(f"Sniffing started on interface {iface_name}")
+        while not stop_sniffing:
             try:
-                sniff(iface=iface_name, prn=detect_attack_patterns, store=0)
+                sniff(
+                    iface=iface_name,
+                    prn=detect_attack_patterns,
+                    store=0,
+                    filter=bpf_filter or "",
+                    monitor=True  # Ensure monitor mode is active
+                )
             except Exception as e:
-                logger.exception("Error during sniffing")
-                time.sleep(5)
+                logger.exception(f"[!] Sniffing error on interface {iface_name}: {e}")
+                time.sleep(5)  # Wait before retry
+
     sniff_thread = threading.Thread(target=sniff_loop)
     sniff_thread.daemon = True
     sniff_thread.start()
-    logger.info(f"Sniffing started on interface {iface_name}")
 
 def start_auth_dos(bssid, iface_name):
     def get_random_mac():
@@ -396,7 +535,7 @@ def main():
     print("\nWebsite:", ip_address + ":5000\n") 
 	
     global sniff_thread
-    sniff_thread = Thread(target=start_sniffing_thread, args=('wlan0',))
+    sniff_thread = Thread(target=start_sniffing_thread, args=(INTERFACE,))
     sniff_thread.start()
     def data_fetcher():
         while True:
@@ -409,7 +548,6 @@ def main():
     
     fetch_thread = Thread(target=data_fetcher, daemon=True)
     fetch_thread.start()
-    time.sleep(6)
     threading.Thread(target=playsound, args=('welcome.m4a',)).start()
     app.run(debug=False, host='0.0.0.0', port=5000)
 
