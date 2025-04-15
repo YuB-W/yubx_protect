@@ -180,8 +180,6 @@
         <button onclick="protectWiFi()">Protect</button>
         <button onclick="autoProtect()">Auto Protect</button>
         <button onclick="fetchAlerts()">Zoom To Alert</button>
-        <button onclick="refreshMap()">Refresh Map</button>
-        <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     </div>
     <div id="map"></div>
     <div id="logs"></div>
@@ -189,10 +187,97 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/esri-leaflet"></script>
     <script>
-        // Initialize map
-        const map = L.map('map').setView([32.05665727536159, 34.758242349151836], 0);
-        L.esri.basemapLayer('Imagery').addTo(map);
+   const maxSatelliteZoom = 18;
 
+    const map = L.map("map").setView([32.0853, 34.7818], 10);
+
+    // Satellite Imagery
+    const satelliteLayer = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Esri Satellite © Esri, Maxar, Earthstar Geographics",
+        maxZoom: 20,
+        minZoom: 1,
+        noWrap: true,
+      }
+    );
+
+    // Transparent Labels Overlay (streets, city names, etc.)
+    const labelsOverlay = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Labels © Esri",
+        maxZoom: 20,
+        pane: "overlayPane",
+      }
+    );
+
+    // Street Map Layer
+    const streetLayer = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 20,
+      }
+    );
+
+    // Start with Satellite + Labels
+    satelliteLayer.addTo(map);
+    labelsOverlay.addTo(map);
+
+    // Layer control
+    const baseMaps = {
+      "Esri Satellite": satelliteLayer,
+      "OpenStreetMap": streetLayer,
+    };
+    const overlays = {
+      "Labels": labelsOverlay,
+    };
+    L.control.layers(baseMaps, overlays).addTo(map);
+
+    // Add popup on click
+    map.on("click", function (e) {
+      L.popup()
+        .setLatLng(e.latlng)
+        .setContent(`📍 Lat: ${e.latlng.lat.toFixed(5)}, Lng: ${e.latlng.lng.toFixed(5)}`)
+        .openOn(map);
+    });
+
+    // Zoom info box
+    const info = L.control({ position: "bottomleft" });
+    info.onAdd = function () {
+      this._div = L.DomUtil.create("div", "info");
+      this.update();
+      return this._div;
+    };
+    info.update = function (zoom) {
+      this._div.innerHTML = `<strong>Zoom:</strong> ${zoom ?? map.getZoom()}`;
+    };
+    info.addTo(map);
+
+    // Auto switch layers on zoom
+    map.on("zoomend", () => {
+      const zoom = map.getZoom();
+      info.update(zoom);
+
+      if (zoom > maxSatelliteZoom && map.hasLayer(satelliteLayer)) {
+        map.removeLayer(satelliteLayer);
+        map.removeLayer(labelsOverlay);
+        map.addLayer(streetLayer);
+        console.log("🔁 Switched to Street Map due to max satellite zoom");
+      } else if (zoom <= maxSatelliteZoom && map.hasLayer(streetLayer)) {
+        map.removeLayer(streetLayer);
+        map.addLayer(satelliteLayer);
+        map.addLayer(labelsOverlay);
+        console.log("🔁 Switched back to Satellite with Labels");
+      }
+    });
+    
+    
+    
+    
+    
         // Define the target icon
         const targetIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/YuB-W/files/main/ta2.png', // Updated to a direct link to the target icon
@@ -201,15 +286,6 @@
             popupAnchor: [0, -32] // Popup position
         });
 
-        function refreshMap() {
-            map.invalidateSize();
-            showAlert('Map refreshed', 'success');
-        }
-
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            showAlert('Dark mode toggled', 'success');
-        }
 
         let targetMarker;
 
@@ -359,6 +435,64 @@
                 });
         }
         
+        
+        
+        
+        
+        
+        const cityData = [
+  {
+    name: "Ashkelon",
+    lat: 31.667,
+    lon: 34.571,
+    coverTime: "30 seconds"
+  },
+  {
+    name: "Tel Aviv",
+    lat: 32.0853,
+    lon: 34.7818,
+    coverTime: "90 seconds"
+  },
+  {
+    name: "Jerusalem",
+    lat: 31.7683,
+    lon: 35.2137,
+    coverTime: "90 seconds"
+  },
+  {
+    name: "Haifa",
+    lat: 32.7940,
+    lon: 34.9896,
+    coverTime: "2 minutes"
+  },
+  {
+    name: "Be'er Sheva",
+    lat: 31.2518,
+    lon: 34.7913,
+    coverTime: "60 seconds"
+  }
+];
+
+cityData.forEach(city => {
+  const marker = L.circleMarker([city.lat, city.lon], {
+    radius: 7,
+    color: "#ff0000",
+    fillColor: "#ff6666",
+    fillOpacity: 0.9
+  }).addTo(map);
+
+  marker.bindPopup(`
+    <b>🏙️ ${city.name}</b><br>
+    🕒 Time to shelter: <b>${city.coverTime}</b><br>
+    🚨 Rocket alert system: <i>Activated</i><br>
+    🛡️ Recommended: Nearest secure shelter within range
+  `);
+});
+
+        
+        
+        
+        
         const cityCoordinates = {};
 	const alertMarkers = {};  // Store markers keyed by city name
 
@@ -488,3 +622,4 @@
         
     </script>
 </body>
+l
