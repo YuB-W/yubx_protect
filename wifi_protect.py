@@ -60,6 +60,7 @@ import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template_string, request, jsonify, current_app
 from scapy.all import (
+    get_if_list,
     sniff, Dot11Deauth, RadioTap, Dot11, Dot11Auth, sendp,
     Dot11Beacon, Dot11Disas, Dot11ProbeReq  # <-- Add this
 )
