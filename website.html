@@ -358,101 +358,105 @@
                     showAlert('The System is Offline');
                 });
         }
-        const cityCoordinates = {};
-const alertMarkers = {};  // Store markers keyed by city name
-
-async function displayAlerts(alerts) {
-    if (!alerts.length) return;
-
-    let firstAlertCoords = null;
-    let firstAlertMarker = null;
-
-    for (const alert of alerts) {
-        const city = alert.data;
-
-        let coords = cityCoordinates[city];
-        if (!coords) {
-            coords = await fetchCoordinates(city);
-            if (coords) {
-                cityCoordinates[city] = coords;
-            } else {
-                coords = [32.0853, 34.7818]; // Fallback to Tel Aviv
-            }
-        }
-
-        if (!alertMarkers[city]) {
-            alertMarkers[city] = L.marker(coords).addTo(map);
-        }
-
-        if (!firstAlertCoords) {
-            firstAlertCoords = coords;
-            firstAlertMarker = alertMarkers[city];
-        }
-        const alertDate = new Date(alert.alertDate).toLocaleString();
-
-        // Enhanced popup with custom HTML structure and styles
-        alertMarkers[city].bindPopup(`
-            <div class="alert-popup">
-                <div class="alert-header">
-                        <strong>${alert.category_desc}</strong>
-                    </div>
-                    <div class="alert-body">
-                    	<p>city: ${alert.data}</p>
-                        <p>time: ${alert.time}</p>
-                        <small class="alert-date">date: ${alert.date}</small>
-                    </div>
-                    <div class="alert-footer">
-                        <span class="alert-footer-text">Issued by system</span>
-                    </div>
-                </div>
-            `);
-        }
-
-        if (firstAlertCoords && firstAlertMarker) {
-            map.flyTo(firstAlertCoords, 16, {
-                animate: true,
-                duration: 4.5,  
-            });
-
-            map.once('moveend', () => {
-                firstAlertMarker.openPopup();
-            });
-        } else {
-            map.flyTo([32.0853, 34.7818], 14, { animate: true });
-            }
-        }
-
-
-            // Function to fetch coordinates for a city using OpenStreetMap's Nominatim service
-            async function fetchCoordinates(cityName) {
-                if (!cityName) {
-                    console.error("City name cannot be empty.");
-                    return null;
-                }
-            
-                const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)},Israel&format=json&limit=1&countrycodes=IL`;
-            
-                try {
-                    const response = await fetch(geocodeUrl);
-                    if (!response.ok) {
-                        console.error(`Error: Received status ${response.status}`);
-                        return null;
-                    }
-            
-                    const data = await response.json();
-                    if (data.length > 0) {
-                        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-                    } else {
-                        console.warn(`No results found for city: ${cityName}`);
-                        return null;
-                    }
-                } catch (error) {
-                    console.error(`Failed to fetch coordinates for city: ${cityName}`, error);
-                    return null;
-                }
-            }
-
         
+        const cityCoordinates = {};
+	const alertMarkers = {};  // Store markers keyed by city name
+
+
+	async function displayAlerts(alerts) {
+	    if (!alerts.length) return;
+
+	    let firstAlertCoords = null;
+	    let firstAlertMarker = null;
+
+	    for (const alert of alerts) {
+		const city = alert.data;
+
+		let coords = cityCoordinates[city];
+		if (!coords) {
+		    coords = await fetchCoordinates(city);
+		    if (coords) {
+			cityCoordinates[city] = coords;
+		    } else {
+			coords = [32.0853, 34.7818]; // Fallback to Tel Aviv
+		    }
+		}
+
+		if (!alertMarkers[city]) {
+		    alertMarkers[city] = L.marker(coords).addTo(map);
+		}
+
+		if (!firstAlertCoords) {
+		    firstAlertCoords = coords;
+		    firstAlertMarker = alertMarkers[city];
+		}
+		const alertDate = new Date(alert.alertDate).toLocaleString();
+
+		// Enhanced popup with custom HTML structure and styles
+		alertMarkers[city].bindPopup(`
+		    <div class="alert-popup">
+			<div class="alert-header">
+			        <strong>${alert.category_desc}</strong>
+			    </div>
+			    <div class="alert-body">
+			    	<p>city: ${alert.data}</p>
+			        <p>time: ${alert.time}</p>
+			        <small class="alert-date">date: ${alert.date}</small>
+			    </div>
+			    <div class="alert-footer">
+			        <span class="alert-footer-text">Issued by system</span>
+			    </div>
+			</div>
+		    `);
+		}
+
+		if (firstAlertCoords && firstAlertMarker) {
+		    map.flyTo(firstAlertCoords, 16, {
+		        animate: true,
+		        duration: 4.5,  
+		    });
+
+		    map.once('moveend', () => {
+		        firstAlertMarker.openPopup();
+		    });
+		} else {
+		    map.flyTo([32.0853, 34.7818], 14, { animate: true });
+		    }
+		}
+
+		async function fetchCoordinates(cityName) {
+		    console.info("Original cityName:", cityName);
+
+		    if (!cityName || typeof cityName !== 'string') {
+			console.error("Invalid input: City name must be a non-empty string.");
+			return null;
+		    }
+
+		    const geocodeUrl = `http://192.168.252.53:5000/api/geocode?city=${encodeURIComponent(cityName)}`;
+
+		    try {
+			const response = await fetch(geocodeUrl);
+			const data = await response.json();
+
+			if (!response.ok) {
+			    console.error(`API error: ${data.error || 'Unknown error'}`);
+			    return null;
+			}
+
+			if (!Array.isArray(data) || data.length === 0 || !data[0].lat || !data[0].lon) {
+			    console.warn(`No coordinates found for city: ${cityName}`);
+			    return null;
+			}
+
+			const { lat, lon } = data[0];
+			return [parseFloat(lat), parseFloat(lon)];
+		    } catch (error) {
+			console.error(`Exception while fetching coordinates for "${cityName}":`, error);
+			return null;
+		    }
+		}
+
+
         async function fetchAlerts() {
                 try {
                     let response = await fetch('/alerts');
@@ -480,5 +484,7 @@ async function displayAlerts(alerts) {
 
             initialize();
         });
+        
+        
     </script>
 </body>
