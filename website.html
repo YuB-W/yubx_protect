@@ -356,7 +356,7 @@
         }
 
         function startSniffing() {
-            fetch('/start_sniffing', { method: 'POST', body: new URLSearchParams({ iface: 'wlan0' }) })
+            fetch('/start_sniffing', { method: 'POST', body: new URLSearchParams({ iface: 'wlan1' }) })
                 .then(response => response.json())
                 .then(data => {
                     showAlert('Protection Started!.', 'success');
